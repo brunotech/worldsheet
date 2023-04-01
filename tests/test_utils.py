@@ -32,8 +32,7 @@ def is_network_reachable():
         s.close()
         return True
     except OSError as e:
-        if e.errno == 101:
-            pass
+        pass
     return False
 
 
@@ -118,5 +117,4 @@ class SimpleModel(torch.nn.Module):
 
     def forward(self, prepared_batch):
         batch = prepared_batch[DATA_ITEM_KEY]
-        model_output = {"losses": {"loss": torch.sum(self.linear(batch))}}
-        return model_output
+        return {"losses": {"loss": torch.sum(self.linear(batch))}}

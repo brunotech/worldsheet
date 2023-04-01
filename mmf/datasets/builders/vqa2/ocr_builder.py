@@ -16,5 +16,5 @@ class TextVQABuilder(VizWizBuilder):
         self.set_dataset_class(VQA2OCRDataset)
 
     @classmethod
-    def config_path(self):
+    def config_path(cls):
         return None

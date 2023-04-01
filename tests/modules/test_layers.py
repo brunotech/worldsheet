@@ -99,11 +99,12 @@ class TestModuleLayers(unittest.TestCase):
         )
 
     def test_bert_classifier_head(self):
-        config = {}
-        config["hidden_size"] = 768
-        config["hidden_act"] = "gelu"
-        config["layer_norm_eps"] = 1e-12
-        config["hidden_dropout_prob"] = 0.1
+        config = {
+            "hidden_size": 768,
+            "hidden_act": "gelu",
+            "layer_norm_eps": 1e-12,
+            "hidden_dropout_prob": 0.1,
+        }
         config = OmegaConf.create(config)
         clf = layers.ClassifierLayer("bert", 768, 1, config=config)
         self.assertEqual(len(list(clf.module.children())), 3)

@@ -34,14 +34,14 @@ class TrainerReportingMixin(ABC):
             # Add metrics to meter only when mode is `eval`
             meter_update_dict = {}
             if not eval_mode:
-                loss_key = report.dataset_type + "/total_loss"
-                reduced_loss = sum([loss.mean() for loss in reduced_loss_dict.values()])
+                loss_key = f"{report.dataset_type}/total_loss"
+                reduced_loss = sum(loss.mean() for loss in reduced_loss_dict.values())
                 if hasattr(reduced_loss, "item"):
                     reduced_loss = reduced_loss.item()
 
                 registry.register(loss_key, reduced_loss)
-                meter_update_dict.update({loss_key: reduced_loss})
-                meter_update_dict.update(reduced_loss_dict)
+                meter_update_dict[loss_key] = reduced_loss
+                meter_update_dict |= reduced_loss_dict
             if hasattr(report, "metrics"):
                 meter_update_dict.update(reduced_metrics_dict)
             meter.update(meter_update_dict, report.batch_size)

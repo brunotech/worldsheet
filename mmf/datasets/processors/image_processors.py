@@ -60,12 +60,10 @@ class TorchvisionTransforms(BaseProcessor):
         self.transform = transforms.Compose(transforms_list)
 
     def __call__(self, x):
-        # Support both dict and normal mode
-        if isinstance(x, collections.abc.Mapping):
-            x = x["image"]
-            return {"image": self.transform(x)}
-        else:
+        if not isinstance(x, collections.abc.Mapping):
             return self.transform(x)
+        x = x["image"]
+        return {"image": self.transform(x)}
 
 
 @registry.register_processor("GrayScaleTo3Channels")
@@ -74,11 +72,10 @@ class GrayScaleTo3Channels(BaseProcessor):
         return
 
     def __call__(self, x):
-        if isinstance(x, collections.abc.Mapping):
-            x = x["image"]
-            return {"image": self.transform(x)}
-        else:
+        if not isinstance(x, collections.abc.Mapping):
             return self.transform(x)
+        x = x["image"]
+        return {"image": self.transform(x)}
 
     def transform(self, x):
         assert isinstance(x, torch.Tensor)

@@ -27,8 +27,7 @@ class SoftPerspectiveShader(nn.Module):
             raise ValueError(msg)
         texels = meshes.sample_textures(fragments)
         blend_params = kwargs.get("blend_params", self.blend_params)
-        images = softmax_rgb_blend(texels, fragments, blend_params)
-        return images
+        return softmax_rgb_blend(texels, fragments, blend_params)
 
 
 class HardPerspectiveShader(nn.Module):
@@ -47,8 +46,7 @@ class HardPerspectiveShader(nn.Module):
             raise ValueError(msg)
         texels = meshes.sample_textures(fragments)
         blend_params = kwargs.get("blend_params", self.blend_params)
-        images = hard_rgb_blend(texels, fragments, blend_params)
-        return images
+        return hard_rgb_blend(texels, fragments, blend_params)
 
 
 def softmax_rgbd_blend(
@@ -156,5 +154,4 @@ class SoftRGBDShader(nn.Module):
         texels = meshes.sample_textures(fragments)
         blend_params = kwargs.get("blend_params", self.blend_params)
         z_background = kwargs.get("z_background", self.z_background)
-        images = softmax_rgbd_blend(texels, fragments, blend_params, z_background)
-        return images
+        return softmax_rgbd_blend(texels, fragments, blend_params, z_background)

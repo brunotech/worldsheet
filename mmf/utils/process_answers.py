@@ -34,7 +34,6 @@ def filter_answers(answers_dset, min_occurence):
     """This will change the answer to preprocessed version
     """
     occurence = {}
-    answer_list = []
     evalai_answer_processor = EvalAIAnswerProcessor()
     for ans_entry in answers_dset:
         gtruth = ans_entry["multiple_choice_answer"]
@@ -42,10 +41,11 @@ def filter_answers(answers_dset, min_occurence):
         if gtruth not in occurence:
             occurence[gtruth] = set()
         occurence[gtruth].add(ans_entry["question_id"])
-    for answer in occurence.keys():
-        if len(occurence[answer]) >= min_occurence:
-            answer_list.append(answer)
-
+    answer_list = [
+        answer
+        for answer, value in occurence.items()
+        if len(value) >= min_occurence
+    ]
     print(
         "Num of answers that appear >= %d times: %d" % (min_occurence, len(answer_list))
     )

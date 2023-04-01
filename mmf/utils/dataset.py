@@ -48,9 +48,7 @@ def build_dataset_from_multiple_imdbs(config, dataset_cls, dataset_type):
 
     if dataset_type not in config.imdb_files:
         warnings.warn(
-            "Dataset type {} is not present in "
-            "imdb_files of dataset config. Returning None. "
-            "This dataset won't be used.".format(dataset_type)
+            f"Dataset type {dataset_type} is not present in imdb_files of dataset config. Returning None. This dataset won't be used."
         )
         return None
 

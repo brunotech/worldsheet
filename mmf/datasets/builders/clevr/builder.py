@@ -70,10 +70,10 @@ class CLEVRBuilder(BaseDatasetBuilder):
 
     def update_registry_for_model(self, config):
         registry.register(
-            self.dataset_name + "_text_vocab_size",
+            f"{self.dataset_name}_text_vocab_size",
             self.dataset.text_processor.get_vocab_size(),
         )
         registry.register(
-            self.dataset_name + "_num_final_outputs",
+            f"{self.dataset_name}_num_final_outputs",
             self.dataset.answer_processor.get_vocab_size(),
         )

@@ -34,15 +34,12 @@ class VQACPv2AnnotationDatabase(OKVQAAnnotationDatabase):
 
         # Convert to linear format
         data = []
-        question_dict = {}
-        for question in questions:
-            question_dict[question["question_id"]] = question["question"]
-
+        question_dict = {
+            question["question_id"]: question["question"] for question in questions
+        }
         for annotation in annotations:
             annotation["question"] = question_dict[annotation["question_id"]]
-            answers = []
-            for answer in annotation["answers"]:
-                answers.append(answer["answer"])
+            answers = [answer["answer"] for answer in annotation["answers"]]
             annotation["answers"] = answers
             data.append(copy.deepcopy(annotation))
 

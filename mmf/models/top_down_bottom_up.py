@@ -17,7 +17,7 @@ class TopDownBottomUp(BaseModel):
         self.image_attention_model = image_attention_model
         self.text_embedding_models = text_embedding_models
         self.classifier = classifier
-        text_lstm_dim = sum([q.text_out_dim for q in text_embedding_models])
+        text_lstm_dim = sum(q.text_out_dim for q in text_embedding_models)
         joint_embedding_out_dim = classifier.input_dim
         image_feat_dim = image_attention_model.image_feat_dim
         self.non_linear_text = ReLUWithWeightNormFC(
@@ -28,7 +28,7 @@ class TopDownBottomUp(BaseModel):
         )
 
     @classmethod
-    def config_path(self):
+    def config_path(cls):
         return None
 
     def build(self):
@@ -61,6 +61,4 @@ class TopDownBottomUp(BaseModel):
         joint_embedding = self.non_linear_text(text_embedding) * self.non_linear_image(
             image_embedding
         )
-        logit_res = self.classifier(joint_embedding)
-
-        return logit_res
+        return self.classifier(joint_embedding)

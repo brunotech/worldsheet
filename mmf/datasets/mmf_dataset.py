@@ -74,9 +74,7 @@ class MMFDataset(BaseDataset):
             assert isinstance(paths, collections.abc.MutableSequence)
             selected_path = paths[self._index]
 
-        selected_path = self._add_root_dir(selected_path)
-
-        return selected_path
+        return self._add_root_dir(selected_path)
 
     def _add_root_dir(self, path):
         path = path.split(",")

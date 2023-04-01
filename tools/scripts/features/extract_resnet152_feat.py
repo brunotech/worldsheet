@@ -63,17 +63,15 @@ def extract_image_feat(img_file):
     if use_cuda:
         img_var = img_var.cuda()
 
-    img_feat = _resnet_module(img_var)
-    return img_feat
+    return _resnet_module(img_var)
 
 
 def get_image_id(image_name):
-    image_id = int(image_name.split(".")[0].split("_")[-1])
-    return image_id
+    return int(image_name.split(".")[0].split("_")[-1])
 
 
 def extract_dataset_pool5(image_dir, save_dir, total_group, group_id, ext_filter):
-    image_list = glob(image_dir + "/*." + ext_filter)
+    image_list = glob(f"{image_dir}/*.{ext_filter}")
     image_list = {f: 1 for f in image_list}
     exclude = {}
     with open("./list") as f:
@@ -105,7 +103,7 @@ def extract_dataset_pool5(image_dir, save_dir, total_group, group_id, ext_filter
 
         feat_name = image_name.replace(ext_filter, "npy")
         save_path = os.path.join(save_dir, feat_name)
-        tmp_lock = save_path + ".lock"
+        tmp_lock = f"{save_path}.lock"
 
         if os.path.exists(save_path) and not os.path.exists(tmp_lock):
             continue
@@ -116,7 +114,7 @@ def extract_dataset_pool5(image_dir, save_dir, total_group, group_id, ext_filter
         try:
             pool5_val = extract_image_feat(impath).permute(0, 2, 3, 1)
         except Exception:
-            print("error for" + image_name)
+            print(f"error for{image_name}")
             continue
 
         feat = pool5_val.data.cpu().numpy()

@@ -44,19 +44,18 @@ class LMDBConversion:
             os.path.join(self.args.features_folder, "**", "*.npy"), recursive=True
         )
 
-        features = []
-        for feature in all_features:
-            if not feature.endswith("_info.npy"):
-                features.append(feature)
-
+        features = [
+            feature
+            for feature in all_features
+            if not feature.endswith("_info.npy")
+        ]
         with env.begin(write=True) as txn:
             for infile in tqdm.tqdm(features):
                 reader = np.load(infile, allow_pickle=True)
-                item = {}
                 split = os.path.relpath(infile, self.args.features_folder).split(
                     ".npy"
                 )[0]
-                item["feature_path"] = split
+                item = {"feature_path": split}
                 key = split.encode()
                 id_list.append(key)
                 item["features"] = reader
@@ -92,17 +91,17 @@ class LMDBConversion:
             for img_id in tqdm.tqdm(_image_ids):
                 item = pickle.loads(txn.get(img_id))
                 img_id = img_id.decode("utf-8")
-                tmp_dict = {}
-                tmp_dict["image_id"] = img_id
-                tmp_dict["bbox"] = item["bbox"]
-                tmp_dict["num_boxes"] = item["num_boxes"]
-                tmp_dict["image_height"] = item["image_width"]
-                tmp_dict["image_width"] = item["image_width"]
-                tmp_dict["objects"] = item["objects"]
-                tmp_dict["cls_prob"] = item["cls_prob"]
-
-                info_file_base_name = str(img_id) + "_info.npy"
-                file_base_name = str(img_id) + ".npy"
+                tmp_dict = {
+                    "image_id": img_id,
+                    "bbox": item["bbox"],
+                    "num_boxes": item["num_boxes"],
+                    "image_height": item["image_width"],
+                    "image_width": item["image_width"],
+                    "objects": item["objects"],
+                    "cls_prob": item["cls_prob"],
+                }
+                info_file_base_name = f"{str(img_id)}_info.npy"
+                file_base_name = f"{str(img_id)}.npy"
 
                 np.save(
                     os.path.join(self.args.features_folder, file_base_name),

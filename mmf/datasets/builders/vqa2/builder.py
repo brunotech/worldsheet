@@ -30,12 +30,12 @@ class VQA2Builder(MMFDatasetBuilder):
     def update_registry_for_model(self, config):
         if hasattr(self.dataset, "text_processor"):
             registry.register(
-                self.dataset_name + "_text_vocab_size",
+                f"{self.dataset_name}_text_vocab_size",
                 self.dataset.text_processor.get_vocab_size(),
             )
         if hasattr(self.dataset, "answer_processor"):
             registry.register(
-                self.dataset_name + "_num_final_outputs",
+                f"{self.dataset_name}_num_final_outputs",
                 self.dataset.answer_processor.get_vocab_size(),
             )
 
@@ -46,5 +46,5 @@ class VQA2TrainValBuilder(VQA2Builder):
         super().__init__(dataset_name)
 
     @classmethod
-    def config_path(self):
+    def config_path(cls):
         return "configs/datasets/vqa2/train_val.yaml"

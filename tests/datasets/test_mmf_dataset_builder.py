@@ -18,8 +18,8 @@ class SimpleMMFDataset(BaseDataset):
         self, dataset_name, config, dataset_type, *args, num_examples, **kwargs
     ):
         self.num_examples = num_examples
-        self.features = [x for x in range(self.num_examples)]
-        self.annotations = [x for x in range(self.num_examples)]
+        self.features = list(range(self.num_examples))
+        self.annotations = list(range(self.num_examples))
 
     def __getitem__(self, idx):
         return self.features[idx], self.annotations[idx]
@@ -53,7 +53,7 @@ class TestMMFDatasetBuilder(unittest.TestCase):
             | self._samples_set(self.val)
             | self._samples_set(self.test)
         )
-        self.assertSetEqual(total, {x for x in range(100)})
+        self.assertSetEqual(total, set(range(100)))
 
     def test_train_split_alignment(self):
         self._test_alignment_in_dataset(self.train)
@@ -67,7 +67,7 @@ class TestMMFDatasetBuilder(unittest.TestCase):
         return dataset_builder.load(self.config, dataset_type)
 
     def _samples_set(self, dataset):
-        return set(x for x, _ in dataset)
+        return {x for x, _ in dataset}
 
     def _test_alignment_in_dataset(self, dataset):
         for feature, annotation in dataset:

@@ -81,8 +81,7 @@ class ProjectAttention(nn.Module):
         )
         joint_feature = image_fa * question_fa_expand
         joint_feature = self.dropout(joint_feature)
-        raw_attention = self.lc(joint_feature)
-        return raw_attention
+        return self.lc(joint_feature)
 
     def forward(self, image_feat, question_embedding):
         raw_attention = self.compute_raw_att(image_feat, question_embedding)

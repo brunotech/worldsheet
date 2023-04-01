@@ -20,9 +20,7 @@ class BaseTrainer(ABC):
         # Set run type
         self.run_type = self.config.get("run_type", "train")
 
-        # Print configuration
-        configuration = registry.get("configuration", no_warning=True)
-        if configuration:
+        if configuration := registry.get("configuration", no_warning=True):
             configuration.pretty_print()
 
         # Configure device and cudnn deterministic

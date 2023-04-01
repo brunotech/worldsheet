@@ -35,9 +35,8 @@ def load_yaml(f):
         relative = os.path.abspath(os.path.join(get_mmf_root(), f))
         if not PathManager.isfile(relative):
             raise e
-        else:
-            f = relative
-            mapping = OmegaConf.load(f)
+        f = relative
+        mapping = OmegaConf.load(f)
 
     if mapping is None:
         mapping = OmegaConf.create()
@@ -45,9 +44,7 @@ def load_yaml(f):
     includes = mapping.get("includes", [])
 
     if not isinstance(includes, collections.abc.Sequence):
-        raise AttributeError(
-            "Includes must be a list, {} provided".format(type(includes))
-        )
+        raise AttributeError(f"Includes must be a list, {type(includes)} provided")
 
     include_mapping = OmegaConf.create()
 
@@ -124,14 +121,12 @@ def get_zoo_config(
 
 
 def _get_version_and_resources(item):
-    assert "version" in item, "'version' key should be present in zoo config {}".format(
-        item._get_full_key("")
-    )
+    assert (
+        "version" in item
+    ), f"""'version' key should be present in zoo config {item._get_full_key("")}"""
     assert (
         "resources" in item
-    ), "'resources' key should be present in zoo config {}".format(
-        item._get_full_key("")
-    )
+    ), f"""'resources' key should be present in zoo config {item._get_full_key("")}"""
 
     return item.version, item.resources
 
@@ -160,10 +155,7 @@ def get_mmf_cache_dir():
 
 def get_mmf_env(key=None):
     config = get_global_config()
-    if key:
-        return OmegaConf.select(config.env, key)
-    else:
-        return config.env
+    return OmegaConf.select(config.env, key) if key else config.env
 
 
 def resolve_cache_dir(env_variable="MMF_CACHE_DIR", default="mmf"):
@@ -218,11 +210,7 @@ class Configuration:
 
         self._default_config = self._build_default_config()
 
-        if default_only:
-            other_configs = {}
-        else:
-            other_configs = self._build_other_configs()
-
+        other_configs = {} if default_only else self._build_other_configs()
         self.config = OmegaConf.merge(self._default_config, other_configs)
 
         self.config = self._merge_with_dotlist(self.config, args.opts)
@@ -237,8 +225,7 @@ class Configuration:
 
     def _build_default_config(self):
         self.default_config_path = get_default_config_path()
-        default_config = load_yaml(self.default_config_path)
-        return default_config
+        return load_yaml(self.default_config_path)
 
     def _build_other_configs(self):
         opts_config = self._build_opt_list(self.args.opts)
@@ -252,40 +239,30 @@ class Configuration:
         model_config = self._build_model_config(opts_config)
         dataset_config = self._build_dataset_config(opts_config)
         args_overrides = self._build_demjson_config(self.args.config_override)
-        other_configs = OmegaConf.merge(
+        return OmegaConf.merge(
             model_config, dataset_config, user_config, args_overrides
         )
-
-        return other_configs
 
     def _build_opt_list(self, opts):
         opts_dot_list = self._convert_to_dot_list(opts)
         return OmegaConf.from_dotlist(opts_dot_list)
 
     def _build_user_config(self, opts):
-        user_config = {}
-
         # Update user_config with opts if passed
         self.config_path = opts.config
-        if self.config_path is not None:
-            user_config = load_yaml(self.config_path)
-
-        return user_config
+        return load_yaml(self.config_path) if self.config_path is not None else {}
 
     def import_user_dir(self):
         # Try user_dir options in order of MMF configuration hierarchy
         # First try the default one, which can be set via environment as well
         user_dir = self._default_config.env.user_dir
 
-        # Now, check user's config
-        user_config_user_dir = self._user_config.get("env", {}).get("user_dir", None)
-
-        if user_config_user_dir:
+        if user_config_user_dir := self._user_config.get("env", {}).get(
+            "user_dir", None
+        ):
             user_dir = user_config_user_dir
 
-        # Finally, check opts
-        opts_user_dir = self._opts_config.get("env", {}).get("user_dir", None)
-        if opts_user_dir:
+        if opts_user_dir := self._opts_config.get("env", {}).get("user_dir", None):
             user_dir = opts_user_dir
 
         if user_dir:
@@ -305,9 +282,7 @@ class Configuration:
         default_model_config_path = model_cls.config_path()
 
         if default_model_config_path is None:
-            warning = "Model {}'s class has no default configuration provided".format(
-                model
-            )
+            warning = f"Model {model}'s class has no default configuration provided"
             warnings.warn(warning)
             return OmegaConf.create()
 
@@ -340,7 +315,7 @@ class Configuration:
             if default_dataset_config_path is None:
                 warning = (
                     "Dataset {}'s builder class has no default configuration "
-                    + f"provided"
+                    + "provided"
                 )
                 warnings.warn(warning)
                 continue
@@ -391,7 +366,7 @@ class Configuration:
             opt_values = [opt.split("=") for opt in opts]
         else:
             assert len(opts) % 2 == 0, "Number of opts should be multiple of 2"
-            opt_values = zip(opts[0::2], opts[1::2])
+            opt_values = zip(opts[::2], opts[1::2])
 
         for opt, value in opt_values:
             if opt == "dataset":
@@ -408,9 +383,7 @@ class Configuration:
                     stripped_field = field
                 if stripped_field not in current:
                     raise AttributeError(
-                        "While updating configuration"
-                        " option {} is missing from"
-                        " configuration at field {}".format(opt, stripped_field)
+                        f"While updating configuration option {opt} is missing from configuration at field {stripped_field}"
                     )
                 if isinstance(current[stripped_field], collections.abc.Mapping):
                     current = current[stripped_field]
@@ -433,16 +406,14 @@ class Configuration:
                     else:
                         # Otherwise move on down the chain
                         current = current_value
+                elif idx == len(splits) - 1:
+                    logger.info(f"Overriding option {opt} to {value}")
+                    current[stripped_field] = self._decode_value(value)
                 else:
-                    if idx == len(splits) - 1:
-                        logger.info(f"Overriding option {opt} to {value}")
-                        current[stripped_field] = self._decode_value(value)
-                    else:
-                        raise AttributeError(
-                            "While updating configuration",
-                            "option {} is not present "
-                            "after field {}".format(opt, stripped_field),
-                        )
+                    raise AttributeError(
+                        "While updating configuration",
+                        f"option {opt} is not present after field {stripped_field}",
+                    )
 
         return config
 
@@ -481,7 +452,7 @@ class Configuration:
         if has_equal:
             return opts
 
-        return [(opt + "=" + value) for opt, value in zip(opts[0::2], opts[1::2])]
+        return [f"{opt}={value}" for opt, value in zip(opts[::2], opts[1::2])]
 
     def pretty_print(self):
         if not self.config.training.log_detailed_config:
@@ -530,10 +501,13 @@ class Configuration:
         # if args["seed"] == -1:
         #     self.config["training"]["seed"] = random.randint(1, 1000000)
 
-        if config.learning_rate:
-            if "optimizer" in config and "params" in config.optimizer:
-                lr = config.learning_rate
-                config.optimizer.params.lr = lr
+        if (
+            config.learning_rate
+            and "optimizer" in config
+            and "params" in config.optimizer
+        ):
+            lr = config.learning_rate
+            config.optimizer.params.lr = lr
 
         if not torch.cuda.is_available() and "cuda" in config.training.device:
             warnings.warn(
@@ -555,8 +529,7 @@ class Configuration:
         }
 
         for old, new in mapping.items():
-            value = OmegaConf.select(config, old)
-            if value:
+            if value := OmegaConf.select(config, old):
                 OmegaConf.update(config, new, value)
 
 

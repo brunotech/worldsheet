@@ -20,21 +20,14 @@ class VizWizDataset(VQA2Dataset):
         )
 
     def load_item(self, idx):
-        sample = super().load_item(idx)
-
-        # sample_info = self.annotation_db[idx]
-
-        # if "image_name" in sample_info:
-        #     sample.image_id = sample_info["image_name"]
-
-        return sample
+        return super().load_item(idx)
 
     def format_for_prediction(self, report):
         answers = report.scores.argmax(dim=1)
 
-        predictions = []
         answer_space_size = self.answer_processor.get_true_vocab_size()
 
+        predictions = []
         for idx, image_id in enumerate(report.image_id):
             answer_id = answers[idx].item()
 
@@ -45,16 +38,11 @@ class VizWizDataset(VQA2Dataset):
                 answer = self.answer_processor.idx2word(answer_id)
             # if answer == self.context_processor.PAD_TOKEN:
             #     answer = "unanswerable"
-            if answer == "<unk>" or answer == "<pad>":
+            if answer in ["<unk>", "<pad>"]:
                 answer = "unanswerable"
             predictions.append(
                 {
-                    # "image": "_".join(["VizWiz"] + image_id.split("_")[2:]) + ".jpg",
-                    "image": "VizWiz_"
-                    + self._dataset_type
-                    + "_"
-                    + str(image_id.item()).zfill(12)
-                    + ".jpg",
+                    "image": f"VizWiz_{self._dataset_type}_{str(image_id.item()).zfill(12)}.jpg",
                     "answer": answer,
                 }
             )

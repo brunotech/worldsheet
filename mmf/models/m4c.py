@@ -150,7 +150,7 @@ class M4C(BaseModel):
         self.ocr_ptr_net = OcrPtrNet(**self.config.classifier.ocr_ptr_net)
 
         # fixed answer vocabulary scores
-        num_choices = registry.get(self._datasets[0] + "_num_final_outputs")
+        num_choices = registry.get(f"{self._datasets[0]}_num_final_outputs")
         # remove the OCR copying dimensions in LoRRA's classifier output
         # (OCR copying will be handled separately)
         num_choices -= self.config.classifier.ocr_max_num
@@ -161,7 +161,7 @@ class M4C(BaseModel):
             **self.config.classifier.params,
         )
 
-        self.answer_processor = registry.get(self._datasets[0] + "_answer_processor")
+        self.answer_processor = registry.get(f"{self._datasets[0]}_answer_processor")
 
     def forward(self, sample_list):
         # fwd_results holds intermediate forward pass results
@@ -172,9 +172,7 @@ class M4C(BaseModel):
         self._forward_ocr_encoding(sample_list, fwd_results)
         self._forward_mmt_and_output(sample_list, fwd_results)
 
-        # only keep scores in the forward pass results
-        results = {"scores": fwd_results["scores"]}
-        return results
+        return {"scores": fwd_results["scores"]}
 
     def _forward_txt_encoding(self, sample_list, fwd_results):
         fwd_results["txt_inds"] = sample_list.text
@@ -361,9 +359,7 @@ class TextBert(BertPreTrainedModel):
         encoder_outputs = self.encoder(
             encoder_inputs, extended_attention_mask, head_mask=head_mask
         )
-        seq_output = encoder_outputs[0]
-
-        return seq_output
+        return encoder_outputs[0]
 
 
 class MMT(BertPreTrainedModel):
@@ -442,13 +438,12 @@ class MMT(BertPreTrainedModel):
         mmt_ocr_output = mmt_seq_output[:, ocr_begin:ocr_end]
         mmt_dec_output = mmt_seq_output[:, -dec_max_num:]
 
-        results = {
+        return {
             "mmt_seq_output": mmt_seq_output,
             "mmt_txt_output": mmt_txt_output,
             "mmt_ocr_output": mmt_ocr_output,
             "mmt_dec_output": mmt_dec_output,
         }
-        return results
 
 
 class OcrPtrNet(nn.Module):
@@ -529,9 +524,7 @@ class PrevPredEmbeddings(nn.Module):
         embeddings = position_embeddings + token_type_embeddings
         embeddings = self.emb_layer_norm(embeddings)
         embeddings = self.emb_dropout(embeddings)
-        dec_emb = raw_dec_emb + embeddings
-
-        return dec_emb
+        return raw_dec_emb + embeddings
 
 
 def _get_mask(nums, max_num):
@@ -564,5 +557,4 @@ def _batch_gather(x, inds):
     batch_offsets = batch_offsets.unsqueeze(-1)
     assert batch_offsets.dim() == inds.dim()
     inds_flat = batch_offsets + inds
-    results = F.embedding(inds_flat, x_flat)
-    return results
+    return F.embedding(inds_flat, x_flat)

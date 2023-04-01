@@ -39,9 +39,7 @@ class TestConfigsForKeys(unittest.TestCase):
                 config = configuration.get_config()
                 self.assertTrue(
                     model_key in config.model_config,
-                    "Key for model {} doesn't exists in its configuration".format(
-                        model_key
-                    ),
+                    f"Key for model {model_key} doesn't exists in its configuration",
                 )
 
     def test_dataset_configs_for_keys(self):
@@ -64,7 +62,5 @@ class TestConfigsForKeys(unittest.TestCase):
                 config = configuration.get_config()
                 self.assertTrue(
                     builder_key in config.dataset_config,
-                    "Key for dataset {} doesn't exists in its configuration".format(
-                        builder_key
-                    ),
+                    f"Key for dataset {builder_key} doesn't exists in its configuration",
                 )

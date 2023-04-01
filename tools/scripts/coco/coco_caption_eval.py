@@ -28,8 +28,8 @@ class COCOEvalCap:
 
     def __init__(self, img_ids, coco, coco_res):
         self.eval_imgs = []
-        self.eval = dict()
-        self.img_to_eval = dict()
+        self.eval = {}
+        self.img_to_eval = {}
         self.coco = coco
         self.coco_res = coco_res
 
@@ -61,7 +61,7 @@ class COCOEvalCap:
         # Compute scores
         # =================================================
         for scorer, method in scorers:
-            print("computing %s score..." % (scorer.method()))
+            print(f"computing {scorer.method()} score...")
             score, scores = scorer.compute_score(gts, res)
             if type(method) == list:
                 for sc, scs, m in zip(score, scores, method):
@@ -80,8 +80,7 @@ class COCOEvalCap:
     def set_img_to_eval_imgs(self, scores, img_ids, method):
         for img_id, score in zip(img_ids, scores):
             if img_id not in self.img_to_eval:
-                self.img_to_eval[img_id] = dict()
-                self.img_to_eval[img_id]["image_id"] = img_id
+                self.img_to_eval[img_id] = {"image_id": img_id}
             self.img_to_eval[img_id][method] = score
 
     def set_eval_imgs(self):
@@ -117,8 +116,7 @@ if __name__ == "__main__":
     for img in captions["images"]:
         if img["split"] == "test":
             for c in img["sentences"]:
-                d = {}
-                d["image_id"] = c["imgid"]
+                d = {"image_id": c["imgid"]}
                 img_ids.append(c["imgid"])
                 d["caption"] = c["raw"]
                 references.append(d)

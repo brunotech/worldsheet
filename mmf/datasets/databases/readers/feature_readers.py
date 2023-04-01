@@ -61,7 +61,7 @@ class FeatureReader:
         # Currently all lmdb features are with ndim == 2
         if self.base_path.endswith(".lmdb"):
             self.feat_reader = LMDBFeatureReader(self.max_features, self.base_path)
-        elif self.ndim == 2 or self.ndim == 0:
+        elif self.ndim in [2, 0]:
             if self.max_features is None:
                 self.feat_reader = FasterRCNNFeatureReader()
             else:
@@ -77,7 +77,7 @@ class FeatureReader:
             self.feat_reader = Dim3FeatureReader()
         elif self.ndim == 4 and self.depth_first:
             self.feat_reader = CHWFeatureReader(self.max_features)
-        elif self.ndim == 4 and not self.depth_first:
+        elif self.ndim == 4:
             self.feat_reader = HWCFeatureReader()
         else:
             raise TypeError("unknown image feature format")
@@ -145,12 +145,10 @@ class PaddedFasterRCNNFeatureReader:
         self.take_item = False
 
     def _load(self, image_feat_path):
-        image_info = {}
-        image_info["features"] = load_feat(image_feat_path)
-
-        info_path = "{}_info.npy".format(image_feat_path.split(".npy")[0])
+        image_info = {"features": load_feat(image_feat_path)}
+        info_path = f'{image_feat_path.split(".npy")[0]}_info.npy'
         if PathManager.exists(info_path):
-            image_info.update(load_feat(info_path).item())
+            image_info |= load_feat(info_path).item()
 
         return image_info
 
@@ -185,7 +183,7 @@ class PaddedFasterRCNNFeatureReader:
 
         image_loc, image_dim = image_feature.shape
         tmp_image_feat = np.zeros((self.max_loc, image_dim), dtype=np.float32)
-        tmp_image_feat[0:image_loc,] = image_feature[: self.max_loc, :]  # noqa
+        tmp_image_feat[:image_loc] = image_feature[: self.max_loc, :]
         image_feature = torch.from_numpy(tmp_image_feat)
 
         del image_info["features"]
@@ -200,9 +198,7 @@ class LMDBFeatureReader(PaddedFasterRCNNFeatureReader):
 
         if not PathManager.exists(self.db_path):
             raise RuntimeError(
-                "{} path specified for LMDB features doesn't exists.".format(
-                    self.db_path
-                )
+                f"{self.db_path} path specified for LMDB features doesn't exists."
             )
         self.env = None
 
@@ -218,7 +214,7 @@ class LMDBFeatureReader(PaddedFasterRCNNFeatureReader):
         with self.env.begin(write=False, buffers=True) as txn:
             self.image_ids = pickle.loads(txn.get(b"keys"))
             self.image_id_indices = {
-                self.image_ids[i]: i for i in range(0, len(self.image_ids))
+                self.image_ids[i]: i for i in range(len(self.image_ids))
             }
 
     def _load(self, image_file_path):
@@ -253,10 +249,10 @@ class PaddedFeatureRCNNWithBBoxesFeatureReader:
         tmp_image_feat = image_feat_bbox.item().get("image_feature")
         image_loc, image_dim = tmp_image_feat.shape
         tmp_image_feat_2 = np.zeros((self.max_loc, image_dim), dtype=np.float32)
-        tmp_image_feat_2[0:image_loc,] = tmp_image_feat  # noqa
+        tmp_image_feat_2[:image_loc] = tmp_image_feat
         tmp_image_feat_2 = torch.from_numpy(tmp_image_feat_2)
         tmp_image_box = np.zeros((self.max_loc, 4), dtype=np.int32)
-        tmp_image_box[0:image_loc] = image_boxes
+        tmp_image_box[:image_loc] = image_boxes
         tmp_image_box = torch.from_numpy(tmp_image_box)
         image_info = {
             "image_bbox": tmp_image_box,

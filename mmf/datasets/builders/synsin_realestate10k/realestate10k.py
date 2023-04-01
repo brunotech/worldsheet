@@ -33,7 +33,7 @@ class RealEstate10K(data.Dataset):
         )
 
         if dataset == "train":
-            self.imageset = self.imageset[0 : int(0.8 * self.imageset.shape[0])]
+            self.imageset = self.imageset[:int(0.8 * self.imageset.shape[0])]
         else:
             self.imageset = self.imageset[int(0.8 * self.imageset.shape[0]) :]
         if num_duplicate != 1:
@@ -87,9 +87,7 @@ class RealEstate10K(data.Dataset):
         # index = self.rng.randint(self.imageset.shape[0])
         # index = index % self.imageset.shape[0]
         # Load text file containing frame information
-        frames = np.loadtxt(
-            self.base_file + "/%s.txt" % self.imageset[index]
-        )
+        frames = np.loadtxt(f"{self.base_file}/{self.imageset[index]}.txt")
 
         image_index = self.rng.choice(frames.shape[0], size=(1,))[0]
 
@@ -102,7 +100,7 @@ class RealEstate10K(data.Dataset):
         # Look at the change in angle and choose a hard one
         angles = []
         translations = []
-        for viewpoint in range(0, image_indices.shape[0]):
+        for viewpoint in range(image_indices.shape[0]):
             orig_viewpoint = frames[image_index, 7:].reshape(3, 4)
             new_viewpoint = frames[image_indices[viewpoint], 7:].reshape(3, 4)
             dang, dtrans = get_deltas(orig_viewpoint, new_viewpoint)
@@ -119,7 +117,7 @@ class RealEstate10K(data.Dataset):
 
         rgbs = []
         cameras = []
-        for i in range(0, self.num_views):
+        for i in range(self.num_views):
             if i == 0:
                 t_index = image_index
             elif mask.shape[0] > 5:
@@ -131,10 +129,7 @@ class RealEstate10K(data.Dataset):
                 ]
 
             image = Image.open(
-                self.base_file
-                + "/%s/" % (self.imageset[index])
-                + str(int(frames[t_index, 0]))
-                + ".png"
+                f"{self.base_file}/{self.imageset[index]}/{int(frames[t_index, 0])}.png"
             )
             rgbs += [
                 img_as_float(np.array(image.resize([self.W, self.W], Image.BILINEAR)))

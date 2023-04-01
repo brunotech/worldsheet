@@ -75,9 +75,8 @@ class VisualGenomeDataset(VQA2Dataset):
     def _check_unk(self, sample_info):
         if not self._no_unk:
             return False
-        else:
-            index = self.answer_processor.word2idx(sample_info["answers"][0])
-            return index == self.answer_processor.answer_vocab.UNK_INDEX
+        index = self.answer_processor.word2idx(sample_info["answers"][0])
+        return index == self.answer_processor.answer_vocab.UNK_INDEX
 
     def _load_scene_graph(self, idx, sample):
         if self.scene_graph_db is None:
@@ -178,15 +177,11 @@ class VisualGenomeDataset(VQA2Dataset):
             region["y"] /= image_height
             region["x"] /= image_width
 
-            relationships = []
-            objects = []
-
-            for relationship_idx in region["relationships"]:
-                relationships.append(relationship_map[relationship_idx])
-
-            for object_idx in region["objects"]:
-                objects.append(object_map[object_idx])
-
+            relationships = [
+                relationship_map[relationship_idx]
+                for relationship_idx in region["relationships"]
+            ]
+            objects = [object_map[object_idx] for object_idx in region["objects"]]
             region["relationships"] = relationships
             region["objects"] = objects
             region["phrase"] = self.text_processor({"text": region["phrase"]})["text"]

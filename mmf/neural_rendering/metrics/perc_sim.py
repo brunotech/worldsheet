@@ -111,17 +111,11 @@ class PNet(nn.Module):
             all_scores = []
         for (kk, out0) in enumerate(outs0):
             cur_score = 1.0 - cos_sim(outs0[kk], outs1[kk])
-            if kk == 0:
-                val = 1.0 * cur_score
-            else:
-                val = val + cur_score
+            val = 1.0 * cur_score if kk == 0 else val + cur_score
             if retPerLayer:
                 all_scores += [cur_score]
 
-        if retPerLayer:
-            return (val, all_scores)
-        else:
-            return val
+        return (val, all_scores) if retPerLayer else val
 
 
 class squeezenet(torch.nn.Module):
@@ -175,11 +169,9 @@ class squeezenet(torch.nn.Module):
             "SqueezeOutputs",
             ["relu1", "relu2", "relu3", "relu4", "relu5", "relu6", "relu7"],
         )
-        out = vgg_outputs(
+        return vgg_outputs(
             h_relu1, h_relu2, h_relu3, h_relu4, h_relu5, h_relu6, h_relu7
         )
-
-        return out
 
 
 class alexnet(torch.nn.Module):
@@ -222,9 +214,7 @@ class alexnet(torch.nn.Module):
         alexnet_outputs = namedtuple(
             "AlexnetOutputs", ["relu1", "relu2", "relu3", "relu4", "relu5"]
         )
-        out = alexnet_outputs(h_relu1, h_relu2, h_relu3, h_relu4, h_relu5)
-
-        return out
+        return alexnet_outputs(h_relu1, h_relu2, h_relu3, h_relu4, h_relu5)
 
 
 class vgg16(torch.nn.Module):
@@ -266,9 +256,7 @@ class vgg16(torch.nn.Module):
             "VggOutputs",
             ["relu1_2", "relu2_2", "relu3_3", "relu4_3", "relu5_3"],
         )
-        out = vgg_outputs(h_relu1_2, h_relu2_2, h_relu3_3, h_relu4_3, h_relu5_3)
-
-        return out
+        return vgg_outputs(h_relu1_2, h_relu2_2, h_relu3_3, h_relu4_3, h_relu5_3)
 
 
 class resnet(torch.nn.Module):
@@ -313,6 +301,4 @@ class resnet(torch.nn.Module):
         outputs = namedtuple(
             "Outputs", ["relu1", "conv2", "conv3", "conv4", "conv5"]
         )
-        out = outputs(h_relu1, h_conv2, h_conv3, h_conv4, h_conv5)
-
-        return out
+        return outputs(h_relu1, h_conv2, h_conv3, h_conv4, h_conv5)

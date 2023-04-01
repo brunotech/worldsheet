@@ -25,8 +25,8 @@ from transformers.modeling_bert import BertEmbeddings
 class TextEmbedding(nn.Module):
     def __init__(self, emb_type, **kwargs):
         super().__init__()
-        self.model_data_dir = kwargs.get("model_data_dir", None)
-        self.embedding_dim = kwargs.get("embedding_dim", None)
+        self.model_data_dir = kwargs.get("model_data_dir")
+        self.embedding_dim = kwargs.get("embedding_dim")
 
         # Update kwargs here
         if emb_type == "identity":
@@ -52,7 +52,7 @@ class TextEmbedding(nn.Module):
             self.module = nn.Embedding(vocab_size, embedding_dim)
             self.module.text_out_dim = self.embedding_dim
         else:
-            raise NotImplementedError("Unknown question embedding '%s'" % emb_type)
+            raise NotImplementedError(f"Unknown question embedding '{emb_type}'")
 
         self.text_out_dim = self.module.text_out_dim
 
@@ -123,14 +123,12 @@ class PreExtractedEmbedding(nn.Module):
         self.cache = {}
 
     def forward(self, qids):
-        embeddings = []
-        for qid in qids:
-            embeddings.append(self.get_item(qid))
+        embeddings = [self.get_item(qid) for qid in qids]
         return torch.stack(embeddings, dim=0)
 
     @lru_cache(maxsize=5000)
     def get_item(self, qid):
-        return np.load(os.path.join(self.base_path, str(qid.item()) + ".npy"))
+        return np.load(os.path.join(self.base_path, f"{str(qid.item())}.npy"))
 
 
 class AttentionTextEmbedding(nn.Module):
@@ -189,10 +187,7 @@ class AttentionTextEmbedding(nn.Module):
         qtt_softmax = nn.functional.softmax(qatt_conv2, dim=2)
         # N * conv2_out * hidden_dim
         qtt_feature = torch.bmm(qtt_softmax, lstm_drop)
-        # N * (conv2_out * hidden_dim)
-        qtt_feature_concat = qtt_feature.view(batch_size, -1)
-
-        return qtt_feature_concat
+        return qtt_feature.view(batch_size, -1)
 
 
 class ProjectionEmbedding(nn.Module):
@@ -302,8 +297,7 @@ class ImageFinetune(nn.Module):
 
     def forward(self, image):
         i2 = self.lc(image)
-        i3 = nn.functional.relu(i2)
-        return i3
+        return nn.functional.relu(i2)
 
 
 class BertVisioLinguisticEmbeddings(BertEmbeddings):
@@ -534,7 +528,7 @@ class CBNEmbedding(nn.Module):
         self.out_dim = 1024
         self.layer_norm = nn.LayerNorm(self.out_dim)
         cbns = []
-        for i in range(num_layers):
+        for _ in range(num_layers):
             if embedding_dim != self.out_dim:
                 downsample = nn.Conv2d(
                     embedding_dim, self.out_dim, kernel_size=1, stride=1, bias=False

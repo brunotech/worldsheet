@@ -119,7 +119,7 @@ class MMFBert(Pythia):
 
         for _ in range(num_feature_feat):
             feature_embeddings = []
-            feature_attn_model_list = self.config[attr + "_feature_embeddings"]
+            feature_attn_model_list = self.config[f"{attr}_feature_embeddings"]
 
             for feature_attn_model_params in feature_attn_model_list:
                 feature_embedding = nn.MultiheadAttention(**feature_attn_model_params)
@@ -132,12 +132,14 @@ class MMFBert(Pythia):
             feature_embeddings_list.append(feature_embeddings)
 
         setattr(
-            self, attr + "_feature_embeddings_out_dim", self.feature_embeddings_out_dim
+            self,
+            f"{attr}_feature_embeddings_out_dim",
+            self.feature_embeddings_out_dim,
         )
         del self.feature_embeddings_out_dim
         setattr(
             self,
-            attr + "_feature_embeddings_list",
+            f"{attr}_feature_embeddings_list",
             nn.ModuleList(feature_embeddings_list),
         )
 
@@ -151,16 +153,20 @@ class MMFBert(Pythia):
         ]
 
         no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
-        optimizer_grouped_parameters = [
+        return [
             {
                 "params": [
-                    p for n, p in param_optimizer if not any(nd in n for nd in no_decay)
+                    p
+                    for n, p in param_optimizer
+                    if all(nd not in n for nd in no_decay)
                 ],
                 "weight_decay": 0.01,
             },
             {
                 "params": [
-                    p for n, p in param_optimizer if any(nd in n for nd in no_decay)
+                    p
+                    for n, p in param_optimizer
+                    if any(nd in n for nd in no_decay)
                 ],
                 "weight_decay": 0.0,
             },
@@ -170,8 +176,6 @@ class MMFBert(Pythia):
                 "weight_decay": 0.01,
             },
         ]
-
-        return optimizer_grouped_parameters
 
     # WARNING(ASG): This doesn't have finetune_lr_multiplier option enabled yet
 
@@ -220,12 +224,11 @@ class MMFBert(Pythia):
             feature = feature[:batch_size_t]
             features.append(feature)
 
-        feature_encoders = getattr(self, attr + "_feature_encoders")
+        feature_encoders = getattr(self, f"{attr}_feature_encoders")
         # Each feature should have a separate image feature encoders
-        assert len(features) == len(feature_encoders), (
-            "Number of feature encoders, {} are not equal "
-            "to number of features, {}.".format(len(feature_encoders), len(features))
-        )
+        assert len(features) == len(
+            feature_encoders
+        ), f"Number of feature encoders, {len(feature_encoders)} are not equal to number of features, {len(features)}."
 
         # Now, iterate to get final attended image features
         for i, feature in enumerate(features):
@@ -240,14 +243,14 @@ class MMFBert(Pythia):
             # Attribute in which encoders are saved, for "image" it
             # will be "image_feature_encoders", other example is
             # "context_feature_encoders"
-            encoders_attr = attr + "_feature_encoders"
+            encoders_attr = f"{attr}_feature_encoders"
             feature_encoder = getattr(self, encoders_attr)[i]
 
             # Encode the features
             encoded_feature = feature_encoder(feature)
 
             # Get all of the feature embeddings
-            list_attr = attr + "_feature_embeddings_list"
+            list_attr = f"{attr}_feature_embeddings_list"
             feature_embedding_models = getattr(self, list_attr)[i]
             encoded_feature = self.image_feature_projection(encoded_feature)
             encoded_feature = encoded_feature.transpose(0, 1)
@@ -363,12 +366,10 @@ class MMFBert(Pythia):
                     masked_lm_labels.contiguous().view(-1),
                 )
                 # print(seq_relationship_score.argmax(dim=1), is_random_next)
-                loss_key = "{}/{}".format(
-                    sample_list.dataset_name, sample_list.dataset_type
-                )
+                loss_key = f"{sample_list.dataset_name}/{sample_list.dataset_type}"
 
                 output_dict["losses"] = {}
-                output_dict["losses"][loss_key + "/masked_lm_loss"] = masked_lm_loss
+                output_dict["losses"][f"{loss_key}/masked_lm_loss"] = masked_lm_loss
 
                 if is_random_next is not None:
                     output_dict["seq_relationship_score"] = seq_relationship_score
@@ -377,9 +378,7 @@ class MMFBert(Pythia):
                         seq_relationship_score.contiguous().view(-1, 2),
                         is_random_next.contiguous().view(-1),
                     )
-                    output_dict["losses"][
-                        loss_key + "/next_sentence_loss"
-                    ] = next_sentence_loss
+                    output_dict["losses"][f"{loss_key}/next_sentence_loss"] = next_sentence_loss
             return output_dict
         elif (
             "vqa" in self.config.training_head_type
@@ -401,10 +400,7 @@ class MMFBert(Pythia):
 
             output_dict["scores"] = reshaped_logits
             return output_dict
-        elif (
-            self.config.training_head_type == "nlvr2"
-            or self.config.training_head_type == "visual_entailment"
-        ):
+        elif self.config.training_head_type in ["nlvr2", "visual_entailment"]:
             pooled_output = self.dropout(pooled_output)
             logits = self.classifier(pooled_output)
             output_dict["scores"] = logits

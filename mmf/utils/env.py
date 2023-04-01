@@ -92,9 +92,7 @@ def import_files(file_path: str, module_name: str = None):
 def setup_imports():
     from mmf.common.registry import registry
 
-    # First, check if imports are already setup
-    has_already_setup = registry.get("imports_setup", no_warning=True)
-    if has_already_setup:
+    if has_already_setup := registry.get("imports_setup", no_warning=True):
         return
     # Automatically load all of the modules, so that
     # they register with registry

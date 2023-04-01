@@ -47,9 +47,7 @@ def clip_gradients(model, i_iter, writer, config):
             if writer is not None:
                 writer.add_scalars({"question_grad_norm": norm}, i_iter)
         else:
-            raise NotImplementedError(
-                "Clip norm mode %s not implemented" % clip_norm_mode
-            )
+            raise NotImplementedError(f"Clip norm mode {clip_norm_mode} not implemented")
 
 
 def ckpt_name_from_core_args(config):
@@ -77,7 +75,7 @@ def foldername_from_config_override(args):
         folder_name = folder_name.replace("/", "_")
         folder_name = " ".join(folder_name.split())
         folder_name = folder_name.replace(". ", ".").replace(" ", "_")
-        folder_name = "_" + folder_name
+        folder_name = f"_{folder_name}"
     return folder_name
 
 
@@ -106,8 +104,7 @@ def get_absolute_path(paths):
         # Now, try relative to user_dir if it exists
         from mmf.utils.configuration import get_mmf_env
 
-        user_dir = get_mmf_env(key="user_dir")
-        if user_dir:
+        if user_dir := get_mmf_env(key="user_dir"):
             possible_paths.append(os.path.join(user_dir, paths))
 
         mmf_root = get_mmf_root()
@@ -120,11 +117,7 @@ def get_absolute_path(paths):
         for path in possible_paths:
             if PathManager.exists(path):
                 # URIs
-                if path.find("://") == -1:
-                    return os.path.abspath(path)
-                else:
-                    return path
-
+                return os.path.abspath(path) if path.find("://") == -1 else path
         # If nothing works, return original path so that it throws an error
         return paths
     elif isinstance(paths, collections.abc.Iterable):
@@ -136,12 +129,11 @@ def get_absolute_path(paths):
 def get_optimizer_parameters(model, config):
     parameters = model.parameters()
 
-    has_custom = hasattr(model, "get_optimizer_parameters")
-    if has_custom:
+    if has_custom := hasattr(model, "get_optimizer_parameters"):
         parameters = model.get_optimizer_parameters(config)
 
-    is_parallel = isinstance(model, nn.DataParallel) or isinstance(
-        model, nn.parallel.DistributedDataParallel
+    is_parallel = isinstance(
+        model, (nn.DataParallel, nn.parallel.DistributedDataParallel)
     )
 
     if is_parallel and hasattr(model.module, "get_optimizer_parameters"):
@@ -157,15 +149,13 @@ def get_optimizer_parameters(model, config):
 
 def check_unused_parameters(parameters, model, config):
     optimizer_param_set = {p for group in parameters for p in group["params"]}
-    unused_param_names = [
-        n for n, p in model.named_parameters()
+    if unused_param_names := [
+        n
+        for n, p in model.named_parameters()
         if p.requires_grad and p not in optimizer_param_set
-    ]
-    if len(unused_param_names) > 0:
+    ]:
         logger.info(
-            "Model parameters not used to optimizer: {}".format(
-                " ".join(unused_param_names)
-            )
+            f'Model parameters not used to optimizer: {" ".join(unused_param_names)}'
         )
         if not config.optimizer.allow_unused_parameters:
             raise Exception(
@@ -207,9 +197,7 @@ def get_overlap_score(candidate, target):
 
     """
     if len(candidate) < len(target):
-        temp = candidate
-        candidate = target
-        target = temp
+        candidate, target = target, candidate
     overlap = 0.0
     while len(target) >= 2:
         if target in candidate:
@@ -255,8 +243,7 @@ def get_batch_size():
 
     if batch_size % world_size != 0:
         raise RuntimeError(
-            "Batch size {} must be divisible by number "
-            "of GPUs {} used.".format(batch_size, world_size)
+            f"Batch size {batch_size} must be divisible by number of GPUs {world_size} used."
         )
 
     return batch_size // world_size

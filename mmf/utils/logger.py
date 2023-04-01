@@ -41,19 +41,13 @@ def setup_output_folder(folder_only: bool = False):
 
     log_folder = os.path.join(save_dir, "logs")
 
-    env_log_dir = get_mmf_env(key="log_dir")
-    if env_log_dir:
+    if env_log_dir := get_mmf_env(key="log_dir"):
         log_folder = env_log_dir
 
     if not PathManager.exists(log_folder):
         PathManager.mkdirs(log_folder)
 
-    if folder_only:
-        return log_folder
-
-    log_filename = os.path.join(log_folder, log_filename)
-
-    return log_filename
+    return log_folder if folder_only else os.path.join(log_folder, log_filename)
 
 
 # so that calling setup_logger multiple times won't add many handlers
@@ -129,7 +123,7 @@ def setup_logger(
         else:
             filename = os.path.join(output, "train.log")
         if distributed_rank > 0:
-            filename = filename + f".rank{distributed_rank}"
+            filename = f"{filename}.rank{distributed_rank}"
         PathManager.mkdirs(os.path.dirname(filename))
 
         fh = logging.StreamHandler(_cached_log_stream(filename))
@@ -225,8 +219,7 @@ def log_progress(info: Union[Dict, Any], log_format="simple"):
         logger.info(info)
 
     if log_format == "simple":
-        config = registry.get("config")
-        if config:
+        if config := registry.get("config"):
             log_format = config.training.log_format
 
     if log_format == "simple":
@@ -248,11 +241,11 @@ class ColorfulFormatter(logging.Formatter):
         log = super().formatMessage(record)
         if record.levelno == logging.WARNING:
             prefix = colored("WARNING", "red", attrs=["blink"])
-        elif record.levelno == logging.ERROR or record.levelno == logging.CRITICAL:
+        elif record.levelno in [logging.ERROR, logging.CRITICAL]:
             prefix = colored("ERROR", "red", attrs=["blink", "underline"])
         else:
             return log
-        return prefix + " " + log
+        return f"{prefix} {log}"
 
 
 class TensorboardLogger:
@@ -278,10 +271,7 @@ class TensorboardLogger:
             self.summary_writer.close()
 
     def _should_log_tensorboard(self):
-        if self.summary_writer is None or not self._is_master:
-            return False
-        else:
-            return True
+        return bool(self.summary_writer is not None and self._is_master)
 
     def add_scalar(self, key, value, iteration):
         if not self._should_log_tensorboard():

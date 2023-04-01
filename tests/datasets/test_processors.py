@@ -24,8 +24,7 @@ from ..test_utils import compare_tensors
 class TestDatasetProcessors(unittest.TestCase):
     def _get_config(self, path):
         path = os.path.join(os.path.abspath(__file__), path)
-        config = load_yaml(os.path.abspath(path))
-        return config
+        return load_yaml(os.path.abspath(path))
 
     def test_caption_processor(self):
         config = self._get_config("../../../mmf/configs/datasets/coco/defaults.yaml")

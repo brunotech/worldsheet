@@ -43,7 +43,7 @@ class TrainerEvaluationLoopMixin(ABC):
                     )
                     combined_report.batch_size += report.batch_size
 
-                if single_batch is True:
+                if single_batch:
                     break
 
             combined_report.metrics = self.metrics(combined_report, combined_report)
@@ -96,7 +96,7 @@ def _print_psnr_ssim_perc_sim(meter):
                 key_print_list.append(k)
                 val_print_list.append(f"{v.global_avg:.4f}")
 
-    if len(key_print_list) > 0:
+    if key_print_list:
         print('\n')
         print('-' * 80)
         print('copy-paste metrics:')

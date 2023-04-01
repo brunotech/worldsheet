@@ -206,12 +206,11 @@ class TrainerTrainingLoopMixin(ABC):
 
     def _extract_loss(self, report: Dict[str, Any]) -> Tensor:
         loss_dict = report.losses
-        loss = sum([loss.mean() for loss in loss_dict.values()])
-        return loss
+        return sum(loss.mean() for loss in loss_dict.values())
 
     def _calculate_max_updates(self):
-        max_updates = self.training_config.max_updates
         max_epochs = self.training_config.max_epochs
+        max_updates = self.training_config.max_updates
         if max_updates is None and max_epochs is None:
             raise ValueError("Neither max_updates nor max_epochs is specified.")
 
@@ -226,8 +225,7 @@ class TrainerTrainingLoopMixin(ABC):
 
         if max_updates is not None and max_epochs is not None:
             warnings.warn(
-                "Both max_updates and max_epochs are specified. "
-                + f"Favoring max_epochs: {max_epochs}"
+                f"Both max_updates and max_epochs are specified. Favoring max_epochs: {max_epochs}"
             )
 
         if max_epochs is not None:

@@ -257,8 +257,7 @@ class VocabProcessor(BaseProcessor):
             self.max_length = config.max_length
         else:
             warnings.warn(
-                "No 'max_length' parameter in Processor's "
-                "configuration. Setting to {}.".format(self.MAX_LENGTH_DEFAULT)
+                f"No 'max_length' parameter in Processor's configuration. Setting to {self.MAX_LENGTH_DEFAULT}."
             )
             self.max_length = self.MAX_LENGTH_DEFAULT
 
@@ -580,8 +579,7 @@ class VQAAnswerProcessor(BaseProcessor):
         else:
             self.num_answers = self.DEFAULT_NUM_ANSWERS
             warnings.warn(
-                "'num_answers' not defined in the config. "
-                "Setting to default of {}".format(self.DEFAULT_NUM_ANSWERS)
+                f"'num_answers' not defined in the config. Setting to default of {self.DEFAULT_NUM_ANSWERS}"
             )
 
     def __call__(self, item):
@@ -704,9 +702,9 @@ class VQAAnswerProcessor(BaseProcessor):
                 matching_answers = [item for item in other_answers if item[1] == answer]
                 acc = min(1, float(len(matching_answers)) / 3)
                 accs.append(acc)
-            avg_acc = sum(accs) / len(accs)
-
             if answer != self.answer_vocab.UNK_INDEX:
+                avg_acc = sum(accs) / len(accs)
+
                 scores[answer] = avg_acc
 
         return scores
@@ -751,8 +749,7 @@ class SoftCopyAnswerProcessor(VQAAnswerProcessor):
         else:
             self.max_length = self.DEFAULT_MAX_LENGTH
             warnings.warn(
-                "'max_length' not defined in the config. "
-                "Setting to default of {}".format(self.DEFAULT_MAX_LENGTH)
+                f"'max_length' not defined in the config. Setting to default of {self.DEFAULT_MAX_LENGTH}"
             )
 
         self.context_preprocessor = None
@@ -1125,8 +1122,10 @@ class EvalAIAnswerProcessor(BaseProcessor):
     def process_punctuation(self, in_text):
         out_text = in_text
         for p in self.PUNCTUATIONS:
-            if (p + " " in in_text or " " + p in in_text) or (
-                re.search(self.COMMA_STRIP, in_text) is not None
+            if (
+                f"{p} " in in_text
+                or f" {p}" in in_text
+                or re.search(self.COMMA_STRIP, in_text) is not None
             ):
                 out_text = out_text.replace(p, "")
             else:
@@ -1141,13 +1140,10 @@ class EvalAIAnswerProcessor(BaseProcessor):
             word = self.NUMBER_MAP.setdefault(word, word)
             if word not in self.ARTICLES:
                 out_text.append(word)
-            else:
-                pass
         for word_id, word in enumerate(out_text):
             if word in self.CONTRACTIONS:
                 out_text[word_id] = self.CONTRACTIONS[word]
-        out_text = " ".join(out_text)
-        return out_text
+        return " ".join(out_text)
 
     def __call__(self, item):
         item = self.word_tokenize(item)
@@ -1257,7 +1253,7 @@ class M4CAnswerProcessor(BaseProcessor):
             # we put OCR after the fixed vocabulary in the answer index space
             # so add num_vocab offset to the OCR index
             matched_inds.extend([num_vocab + idx for idx in ocr2inds_dict[word]])
-            if len(matched_inds) == 0:
+            if not matched_inds:
                 if self.match_answer_to_unk:
                     matched_inds.append(vocab2idx_dict.get("<unk>"))
                 else:
@@ -1265,7 +1261,7 @@ class M4CAnswerProcessor(BaseProcessor):
             answer_word_matches.append(matched_inds)
 
         # expand per-word matched indices into the list of matched sequences
-        if len(answer_word_matches) == 0:
+        if not answer_word_matches:
             return []
         idx_seq_list = [()]
         for matched_inds in answer_word_matches:
@@ -1300,10 +1296,7 @@ class M4CAnswerProcessor(BaseProcessor):
                 acc = min(1, float(len(matching_answers)) / 3)
                 accs.append(acc)
             unique_answer_scores[idx] = sum(accs) / len(accs)
-        unique_answer2score = {
-            a: s for a, s in zip(unique_answers, unique_answer_scores)
-        }
-        return unique_answer2score
+        return dict(zip(unique_answers, unique_answer_scores))
 
     def __call__(self, item):
         answers = item["answers"]
@@ -1358,7 +1351,7 @@ class M4CAnswerProcessor(BaseProcessor):
         train_prev_inds = torch.zeros(self.max_copy_steps, dtype=torch.long)
         # train_loss_mask records the decoding steps where losses are applied
         train_loss_mask = torch.zeros(self.max_copy_steps, dtype=torch.float)
-        if len(all_idx_seq_list) > 0:
+        if all_idx_seq_list:
             # sample a random decoding answer sequence for teacher-forcing
             idx_seq = all_idx_seq_list[np.random.choice(len(all_idx_seq_list))]
             dec_step_num = min(1 + len(idx_seq), self.max_copy_steps)
@@ -1372,14 +1365,13 @@ class M4CAnswerProcessor(BaseProcessor):
         else:
             idx_seq = ()
 
-        answer_info = {
+        return {
             "answers": answers,
             "answers_scores": scores,
             "sampled_idx_seq": idx_seq,
             "train_prev_inds": train_prev_inds,
             "train_loss_mask": train_loss_mask,
         }
-        return answer_info
 
 
 @registry.register_processor("m4c_caption")
@@ -1405,8 +1397,7 @@ class M4CCaptionProcessor(M4CAnswerProcessor):
         return tokens
 
     def compute_answer_scores(self, answers):
-        unique_answer2score = {a: 1.0 for a in answers}
-        return unique_answer2score
+        return {a: 1.0 for a in answers}
 
 
 @registry.register_processor("masked_region")
@@ -1485,11 +1476,7 @@ class MultiClassFromFile(BaseProcessor):
         self.label_vocab = VocabDict(config.vocab_file, *args, **kwargs)
 
     def __call__(self, item: Union[Dict[str, Any], str]) -> Dict[str, Any]:
-        if isinstance(item, collections.abc.Mapping):
-            label = item["label"]
-        else:
-            label = item
-
+        label = item["label"] if isinstance(item, collections.abc.Mapping) else item
         # Remove UNK by subtracting 1 from output
         # UNK will always be at 0 even if it is not in vocab as it is automatically
         # always added by vocab dict

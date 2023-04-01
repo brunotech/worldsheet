@@ -19,8 +19,7 @@ from setuptools.command.build_ext import build_ext
 
 def clean_html(raw_html):
     cleanr = re.compile("<.*?>")
-    cleantext = re.sub(cleanr, "", raw_html).strip()
-    return cleantext
+    return re.sub(cleanr, "", raw_html).strip()
 
 
 # Single sourcing code from here:
@@ -35,7 +34,7 @@ def find_version(*file_paths):
     version_file = read(*file_paths)
     version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
     if version_match:
-        return version_match.group(1)
+        return version_match[1]
     raise RuntimeError("Unable to find version string.")
 
 

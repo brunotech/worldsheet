@@ -45,7 +45,7 @@ class MoVieMcan(BaseModel):
 
     def _build_word_embedding(self):
         assert len(self._datasets) > 0
-        text_processor = registry.get(self._datasets[0] + "_text_processor")
+        text_processor = registry.get(f"{self._datasets[0]}_text_processor")
         vocab = text_processor.vocab
         self.word_embedding = vocab.get_embedding(torch.nn.Embedding, embedding_dim=300)
 
@@ -60,7 +60,7 @@ class MoVieMcan(BaseModel):
         embedding = TextEmbedding(embedding_type, **embedding_kwargs)
         embeddings_out_dim = embedding.text_out_dim
 
-        setattr(self, attr + "_out_dim", embeddings_out_dim)
+        setattr(self, f"{attr}_out_dim", embeddings_out_dim)
         setattr(self, attr, embedding)
 
     def _update_text_embedding_args(self, args):
@@ -68,9 +68,9 @@ class MoVieMcan(BaseModel):
         args.model_data_dir = self.config.model_data_dir
 
     def _init_feature_encoders(self, attr: str):
-        feat_encoder = self.config[attr + "_feature_encodings"]
-        feature_dim = self.config[attr + "_feature_dim"]
-        setattr(self, attr + "_feature_dim", feature_dim)
+        feat_encoder = self.config[f"{attr}_feature_encodings"]
+        feature_dim = self.config[f"{attr}_feature_dim"]
+        setattr(self, f"{attr}_feature_dim", feature_dim)
 
         encoder_type = feat_encoder.type
         encoder_kwargs = copy.deepcopy(feat_encoder.params)
@@ -79,35 +79,33 @@ class MoVieMcan(BaseModel):
 
         feat_model = ImageFeatureEncoder(encoder_type, feature_dim, **encoder_kwargs)
 
-        setattr(self, attr + "_feature_dim", feat_model.out_dim)
-        setattr(self, attr + "_feature_encoders", feat_model)
+        setattr(self, f"{attr}_feature_dim", feat_model.out_dim)
+        setattr(self, f"{attr}_feature_encoders", feat_model)
 
     def _init_feature_embeddings(self, attr: str):
-        embedding_kwargs = self.config[attr + "_feature_embeddings"]["params"]
+        embedding_kwargs = self.config[f"{attr}_feature_embeddings"]["params"]
         setattr(
-            self, attr + "_feature_embeddings_out_dim", embedding_kwargs["hidden_dim"]
+            self,
+            f"{attr}_feature_embeddings_out_dim",
+            embedding_kwargs["hidden_dim"],
         )
         assert (
-            getattr(self, attr + "_feature_embeddings_out_dim")
+            getattr(self, f"{attr}_feature_embeddings_out_dim")
             == self.text_embeddings_out_dim
-        ), "dim1: {}, dim2: {}".format(
-            getattr(self, attr + "_feature_embeddings_out_dim"),
-            self.text_embeddings_out_dim,
-        )
+        ), f'dim1: {getattr(self, f"{attr}_feature_embeddings_out_dim")}, dim2: {self.text_embeddings_out_dim}'
 
         feature_embedding = TwoBranchEmbedding(
-            getattr(self, attr + "_feature_dim"), **embedding_kwargs
+            getattr(self, f"{attr}_feature_dim"), **embedding_kwargs
         )
-        setattr(self, attr + "_feature_embeddings_list", feature_embedding)
+        setattr(self, f"{attr}_feature_embeddings_list", feature_embedding)
 
     def _get_embeddings_attr(self, attr: str):
         embedding_attr1 = attr
-        if hasattr(self, attr + "_embeddings_out_dim"):
-            embedding_attr1 = attr + "_embeddings_out_dim"
-        else:
-            embedding_attr1 = attr + "_feature_embeddings_out_dim"
-
-        return embedding_attr1
+        return (
+            f"{embedding_attr1}_embeddings_out_dim"
+            if hasattr(self, f"{embedding_attr1}_embeddings_out_dim")
+            else f"{embedding_attr1}_feature_embeddings_out_dim"
+        )
 
     def _init_combine_layer(self, attr1: str, attr2: str):
         multi_modal_combine_layer = BranchCombineLayer(
@@ -117,13 +115,13 @@ class MoVieMcan(BaseModel):
 
         setattr(
             self,
-            attr1 + "_" + attr2 + "_multi_modal_combine_layer",
+            f"{attr1}_{attr2}_multi_modal_combine_layer",
             multi_modal_combine_layer,
         )
 
     def _init_classifier(self, combined_embedding_dim: int):
         # TODO: Later support multihead
-        num_choices = registry.get(self._datasets[0] + "_num_final_outputs")
+        num_choices = registry.get(f"{self._datasets[0]}_num_final_outputs")
         params = self.config["classifier"].get("params")
         if params is None:
             params = {}
@@ -169,7 +167,7 @@ class MoVieMcan(BaseModel):
         return params
 
     def get_mapping(self):
-        mapping = [
+        return [
             "word_embedding",
             "image_feature_embeddings_list_sga",
             "image_feature_embeddings_list_sga_pool",
@@ -179,7 +177,6 @@ class MoVieMcan(BaseModel):
             "classifier",
             "image_feature_encoders",
         ]
-        return mapping
 
     def _get_classifier_input_dim(self):
         return self.image_text_multi_modal_combine_layer.out_dim
@@ -218,19 +215,18 @@ class MoVieMcan(BaseModel):
             sample_list.get_batch_size() if batch_size_t is None else batch_size_t
         )
 
+        feature_encoder = getattr(self, f"{attr}_feature_encoders")
         # Convert list of keys to the actual values
         if hasattr(sample_list, "image"):
             feature = sample_list.image
 
-            feature_encoder = getattr(self, attr + "_feature_encoders")
             encoded_feature = feature_encoder(feature, text_embedding_vec)
         else:
             feature = sample_list.image_feature_0
 
-            feature_encoder = getattr(self, attr + "_feature_encoders")
             encoded_feature = feature_encoder(feature)
 
-        feature_embedding = getattr(self, attr + "_feature_embeddings_list")
+        feature_embedding = getattr(self, f"{attr}_feature_embeddings_list")
         feature_sga, feature_cbn = feature_embedding(
             encoded_feature,
             text_embedding_total,
@@ -266,6 +262,4 @@ class MoVieMcan(BaseModel):
             ["image", "text"], [feature_sga, feature_cbn, text_embedding_vec[:, 1]]
         )
 
-        model_output = {"scores": self.calculate_logits(joint_embedding)}
-
-        return model_output
+        return {"scores": self.calculate_logits(joint_embedding)}

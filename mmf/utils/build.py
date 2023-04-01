@@ -56,9 +56,7 @@ def build_trainer(config: mmf_typings.DictConfig) -> Any:
     """
     trainer_type = config.training.trainer
     trainer_cls = registry.get_trainer_class(trainer_type)
-    trainer_obj = trainer_cls(config)
-
-    return trainer_obj
+    return trainer_cls(config)
 
 
 def build_model(config):
@@ -100,9 +98,9 @@ def build_dataset(
     from mmf.utils.configuration import load_yaml_with_defaults
 
     dataset_builder = registry.get_builder_class(dataset_key)
-    assert dataset_builder, (
-        f"Key {dataset_key} doesn't have a registered " + "dataset builder"
-    )
+    assert (
+        dataset_builder
+    ), f"Key {dataset_key} doesn't have a registered dataset builder"
 
     # If config is not provided, we take it from default one
     if not config:
@@ -240,9 +238,7 @@ def build_scheduler(optimizer, config):
         warnings.warn("scheduler attributes has no params defined, defaulting to {}.")
     params = getattr(scheduler_config, "params", {})
     scheduler_class = registry.get_scheduler_class(scheduler_type)
-    scheduler = scheduler_class(optimizer, **params)
-
-    return scheduler
+    return scheduler_class(optimizer, **params)
 
 
 def build_classifier_layer(config, *args, **kwargs):

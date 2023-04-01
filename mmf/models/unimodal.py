@@ -62,16 +62,12 @@ class UnimodalText(BaseModel):
         args = []
         if "input_ids" in sample_list:
             text = sample_list.input_ids
-            args.append(sample_list.input_mask)
-            args.append(sample_list.segment_ids)
+            args.extend((sample_list.input_mask, sample_list.segment_ids))
         else:
             text = sample_list.text
 
         embedding = self.base(text, *args)
-        output = {}
-        output["scores"] = self.classifier(embedding)
-
-        return output
+        return {"scores": self.classifier(embedding)}
 
 
 @registry.register_model("unimodal_image")
@@ -103,7 +99,4 @@ class UnimodalModal(BaseModel):
             modal = sample_list.image
 
         embedding = self.base(modal, *args)
-        output = {}
-        output["scores"] = self.classifier(embedding)
-
-        return output
+        return {"scores": self.classifier(embedding)}

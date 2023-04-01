@@ -18,10 +18,7 @@ class ImageL1Loss(nn.Module):
         diff = torch.abs(rgb_pred - rgb_gt)
         if loss_mask is not None:
             diff = diff * loss_mask.unsqueeze(-1)
-        # averaging over batch, image height and width, but not channels
-        l1_loss = torch.mean(diff) * 3  # multiplying by 3 channels
-
-        return l1_loss
+        return torch.mean(diff) * 3
 
 
 class DepthL1Loss(nn.Module):
@@ -32,10 +29,7 @@ class DepthL1Loss(nn.Module):
         diff = torch.abs(depth_pred - depth_gt)
         if loss_mask is not None:
             diff = diff * loss_mask
-        # averaging over batch, image height and width
-        l1_loss = torch.mean(diff)
-
-        return l1_loss
+        return torch.mean(diff)
 
 
 class ZGridL1Loss(nn.Module):
@@ -71,10 +65,7 @@ class ZGridL1Loss(nn.Module):
         diff = torch.abs(z_grid_pred - z_grid_gt)
         diff = diff * z_grid_mask
 
-        # averaging over batch, grid height and width
-        l1_loss = torch.mean(diff)
-
-        return l1_loss
+        return torch.mean(diff)
 
 
 class MeshLaplacianLoss(nn.Module):
@@ -107,15 +98,13 @@ class MeshLaplacianLoss(nn.Module):
     def forward(self, verts):
         assert verts.dim() == 3, 'the verts must be in padded format'
         batch_size = verts.size(0)
-        if self.use_l2_loss:
-            laplacian_reg = torch.sum(
-                torch.square(torch.matmul(self.laplacian, verts))
-            ) / batch_size
-        else:
-            laplacian_reg = torch.sum(
-                torch.abs(torch.matmul(self.laplacian, verts))
-            ) / batch_size
-        return laplacian_reg
+        return (
+            torch.sum(torch.square(torch.matmul(self.laplacian, verts)))
+            / batch_size
+            if self.use_l2_loss
+            else torch.sum(torch.abs(torch.matmul(self.laplacian, verts)))
+            / batch_size
+        )
 
 
 class GridOffsetLoss(nn.Module):
@@ -127,11 +116,10 @@ class GridOffsetLoss(nn.Module):
     def forward(self, xy_offset):
         assert xy_offset.dim() == 3
         batch_size = xy_offset.size(0)
-        xy_offset_reg = (
-            torch.sum(torch.square(xy_offset[..., 0]) * (self.grid_W - 1)) +
-            torch.sum(torch.square(xy_offset[..., 1]) * (self.grid_H - 1))
+        return (
+            torch.sum(torch.square(xy_offset[..., 0]) * (self.grid_W - 1))
+            + torch.sum(torch.square(xy_offset[..., 1]) * (self.grid_H - 1))
         ) / batch_size
-        return xy_offset_reg
 
 
 # Modified from SynSin codebase
@@ -167,8 +155,7 @@ class VGG19(torch.nn.Module):
         h_relu3 = self.slice3(h_relu2)
         h_relu4 = self.slice4(h_relu3)
         h_relu5 = self.slice5(h_relu4)
-        out = [h_relu1, h_relu2, h_relu3, h_relu4, h_relu5]
-        return out
+        return [h_relu1, h_relu2, h_relu3, h_relu4, h_relu5]
 
 
 # Modified from SynSin codebase
@@ -197,10 +184,7 @@ class VGG19PerceptualLoss(nn.Module):
         pred_fs = self.model(self.preprocess_img(rgb_pred, loss_mask))
         gt_fs = self.model(self.preprocess_img(rgb_gt, loss_mask))
 
-        # Collect the losses at multiple layers (need unsqueeze in
-        # order to concatenate these together)
-        loss = 0
-        for i in range(0, len(gt_fs)):
-            loss += self.weights[i] * self.criterion(pred_fs[i], gt_fs[i])
-
-        return loss
+        return sum(
+            self.weights[i] * self.criterion(pred_fs[i], gt_fs[i])
+            for i in range(len(gt_fs))
+        )

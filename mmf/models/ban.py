@@ -30,7 +30,7 @@ class BAN(BaseModel):
         self._init_bilinear_attention()
 
     def _build_word_embedding(self):
-        text_processor = registry.get(self._datasets[0] + "_text_processor")
+        text_processor = registry.get(f"{self._datasets[0]}_text_processor")
         vocab = text_processor.vocab
         self.word_embedding = vocab.get_embedding(torch.nn.Embedding, embedding_dim=300)
 
@@ -75,7 +75,7 @@ class BAN(BaseModel):
 
     def _init_classifier(self):
         num_hidden = self.config.text_embedding.num_hidden
-        num_choices = registry.get(self._datasets[0] + "_num_final_outputs")
+        num_choices = registry.get(f"{self._datasets[0]}_num_final_outputs")
         dropout = self.config.classifier.dropout
         self.classifier = WeightNormClassifier(
             num_hidden, num_choices, num_hidden * 2, dropout

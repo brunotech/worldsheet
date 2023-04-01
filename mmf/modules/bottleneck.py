@@ -98,10 +98,7 @@ class MovieBottleneck(nn.Module):
         use_se: bool = True,
     ):
         super().__init__()
-        if norm_layer is None:
-            self.norm_layer = FrozenBatchNorm2d
-        else:
-            self.norm_layer = norm_layer
+        self.norm_layer = FrozenBatchNorm2d if norm_layer is None else norm_layer
         self.cond_planes = cond_planes
         self.planes = planes
         self.inplanes = inplanes
@@ -138,7 +135,7 @@ class MovieBottleneck(nn.Module):
 
         if self.cond_planes and self.compressed:
             x = self.conv1(x) + self.cond(x, cond)
-        elif self.cond_planes and not self.compressed:
+        elif self.cond_planes:
             x += self.cond(x, cond)
             x = self.conv1(x)
         else:
@@ -154,11 +151,7 @@ class MovieBottleneck(nn.Module):
         out = self.conv3(out)
         out = self.bn3(out)
 
-        if self.downsample:
-            shortcut = self.downsample(identity)
-        else:
-            shortcut = identity
-
+        shortcut = self.downsample(identity) if self.downsample else identity
         if self.se:
             out = self.se(out)
 

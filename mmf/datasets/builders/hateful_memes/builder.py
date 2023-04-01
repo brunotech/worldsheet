@@ -31,7 +31,7 @@ class HatefulMemesBuilder(MMFDatasetBuilder):
         self.dataset_class = HatefulMemesImageDataset
 
     @classmethod
-    def config_path(self):
+    def config_path(cls):
         return "configs/datasets/hateful_memes/defaults.yaml"
 
     def load(self, config, dataset_type, *args, **kwargs):
@@ -69,7 +69,7 @@ class HatefulMemesBuilder(MMFDatasetBuilder):
             self.dataset.text_processor, "get_vocab_size"
         ):
             registry.register(
-                self.dataset_name + "_text_vocab_size",
+                f"{self.dataset_name}_text_vocab_size",
                 self.dataset.text_processor.get_vocab_size(),
             )
-        registry.register(self.dataset_name + "_num_final_outputs", 2)
+        registry.register(f"{self.dataset_name}_num_final_outputs", 2)

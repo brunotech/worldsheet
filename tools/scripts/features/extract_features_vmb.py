@@ -130,8 +130,8 @@ class FeatureExtractor:
         im_shape = im.shape
         im_height = im_shape[0]
         im_width = im_shape[1]
-        im_size_min = np.min(im_shape[0:2])
-        im_size_max = np.max(im_shape[0:2])
+        im_size_min = np.min(im_shape[:2])
+        im_size_max = np.max(im_shape[:2])
 
         # Scale based on minimum size
         im_scale = self.MIN_SIZE / im_size_min
@@ -222,15 +222,13 @@ class FeatureExtractor:
         with torch.no_grad():
             output = self.detection_model(current_img_list)
 
-        feat_list = self._process_feature_extraction(
+        return self._process_feature_extraction(
             output,
             im_scales,
             im_infos,
             self.args.feature_name,
             self.args.confidence_threshold,
         )
-
-        return feat_list
 
     def _chunks(self, array, chunk_size):
         for i in range(0, len(array), chunk_size):
@@ -239,8 +237,8 @@ class FeatureExtractor:
     def _save_feature(self, file_name, feature, info):
         file_base_name = os.path.basename(file_name)
         file_base_name = file_base_name.split(".")[0]
-        info_file_base_name = file_base_name + "_info.npy"
-        file_base_name = file_base_name + ".npy"
+        info_file_base_name = f"{file_base_name}_info.npy"
+        file_base_name = f"{file_base_name}.npy"
 
         np.save(
             os.path.join(self.args.output_folder, file_base_name), feature.cpu().numpy()

@@ -149,19 +149,13 @@ class Block(nn.Module):
         self.pos_norm = pos_norm
         # Modules
         self.linear0 = nn.Linear(input_dims[0], mm_dim)
-        if shared:
-            self.linear1 = self.linear0
-        else:
-            self.linear1 = nn.Linear(input_dims[1], mm_dim)
+        self.linear1 = self.linear0 if shared else nn.Linear(input_dims[1], mm_dim)
         merge_linears0, merge_linears1 = [], []
         self.sizes_list = get_sizes_list(mm_dim, chunks)
         for size in self.sizes_list:
             ml0 = nn.Linear(size, size * rank)
             merge_linears0.append(ml0)
-            if self.shared:
-                ml1 = ml0
-            else:
-                ml1 = nn.Linear(size, size * rank)
+            ml1 = ml0 if self.shared else nn.Linear(size, size * rank)
             merge_linears1.append(ml1)
         self.merge_linears0 = nn.ModuleList(merge_linears0)
         self.merge_linears1 = nn.ModuleList(merge_linears1)
@@ -236,9 +230,7 @@ class BlockTucker(nn.Module):
             self.linear1 = nn.Linear(input_dims[1], mm_dim)
 
         self.sizes_list = get_sizes_list(mm_dim, chunks)
-        bilinears = []
-        for size in self.sizes_list:
-            bilinears.append(nn.Bilinear(size, size, size))
+        bilinears = [nn.Bilinear(size, size, size) for size in self.sizes_list]
         self.bilinears = nn.ModuleList(bilinears)
         self.linear_out = nn.Linear(self.mm_dim, self.output_dim)
         self.n_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
@@ -360,10 +352,7 @@ class Tucker(nn.Module):
         self.dropout_output = dropout_output
         # Modules
         self.linear0 = nn.Linear(input_dims[0], mm_dim)
-        if shared:
-            self.linear1 = self.linear0
-        else:
-            self.linear1 = nn.Linear(input_dims[1], mm_dim)
+        self.linear1 = self.linear0 if shared else nn.Linear(input_dims[1], mm_dim)
         self.linear1 = nn.Linear(input_dims[1], mm_dim)
         self.bilinear = nn.Bilinear(mm_dim, mm_dim, mm_dim)
         self.linear_out = nn.Linear(mm_dim, output_dim)

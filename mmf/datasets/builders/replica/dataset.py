@@ -41,8 +41,8 @@ class ReplicaDataset(MMFDataset):
                     dtype=torch.float32
                 )
             trans_img = self.image_processor(orig_img.permute((2, 0, 1)))
-            setattr(current_sample, 'orig_img_{}'.format(n_view), orig_img)
-            setattr(current_sample, 'trans_img_{}'.format(n_view), trans_img)
+            setattr(current_sample, f'orig_img_{n_view}', orig_img)
+            setattr(current_sample, f'trans_img_{n_view}', trans_img)
 
             # depth
             orig_depth = torch.tensor(data_f["depths"][n_view, ..., 0], dtype=torch.float32)
@@ -52,15 +52,15 @@ class ReplicaDataset(MMFDataset):
             depth = orig_depth.clone().detach()
             depth.masked_fill_(~depth_mask, torch.max(orig_depth))
             depth = torch.clamp(depth, min=1e-2)
-            setattr(current_sample, 'orig_depth_{}'.format(n_view), orig_depth)
-            setattr(current_sample, 'depth_{}'.format(n_view), depth)
-            setattr(current_sample, 'depth_mask_{}'.format(n_view), depth_mask)
+            setattr(current_sample, f'orig_depth_{n_view}', orig_depth)
+            setattr(current_sample, f'depth_{n_view}', depth)
+            setattr(current_sample, f'depth_mask_{n_view}', depth_mask)
 
             # camera poses R and T
             R = torch.tensor(data_f["camera_Rs"][n_view], dtype=torch.float32)
             T = torch.tensor(data_f["camera_Ts"][n_view], dtype=torch.float32)
-            setattr(current_sample, 'R_{}'.format(n_view), R)
-            setattr(current_sample, 'T_{}'.format(n_view), T)
+            setattr(current_sample, f'R_{n_view}', R)
+            setattr(current_sample, f'T_{n_view}', T)
 
         if "vis_mask" in data_f:
             current_sample.vis_mask = torch.tensor(

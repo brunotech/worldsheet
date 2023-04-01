@@ -93,7 +93,6 @@ class MaskedCOCODataset(COCODataset):
                 random.randint(0, len(self.annotation_db) - 1)
             ]
 
-        other_caption = other_item["captions"][
+        return other_item["captions"][
             random.randint(0, len(other_item["captions"]) - 1)
         ]
-        return other_caption

@@ -53,14 +53,8 @@ class Dataset(data.Dataset):
         # Then load the image and generate that
         file_name = self.files[index]
 
-        src_image_name = (
-            self.base_path
-            + '/%s/%s.png' % (file_name[0], file_name[1])
-        )
-        tgt_image_name = (
-            self.base_path
-            + '/%s/%s.png' % (file_name[0], file_name[2])
-        )
+        src_image_name = f'{self.base_path}/{file_name[0]}/{file_name[1]}.png'
+        tgt_image_name = f'{self.base_path}/{file_name[0]}/{file_name[2]}.png'
 
         intrinsics = file_name[3:7].astype(np.float32) / float(self.W)
         src_pose = file_name[7:19].astype(np.float32).reshape(3, 4)

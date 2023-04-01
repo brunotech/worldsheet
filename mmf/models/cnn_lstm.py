@@ -62,15 +62,14 @@ class CNNLSTM(BaseModel):
         self.lstm = nn.LSTM(**self.config.lstm)
 
         layers_config = self.config.cnn.layers
-        conv_layers = []
-        for i in range(len(layers_config.input_dims)):
-            conv_layers.append(
-                ConvNet(
-                    layers_config.input_dims[i],
-                    layers_config.output_dims[i],
-                    kernel_size=layers_config.kernel_sizes[i],
-                )
+        conv_layers = [
+            ConvNet(
+                layers_config.input_dims[i],
+                layers_config.output_dims[i],
+                kernel_size=layers_config.kernel_sizes[i],
             )
+            for i in range(len(layers_config.input_dims))
+        ]
         conv_layers.append(Flatten())
         self.cnn = nn.Sequential(*conv_layers)
 

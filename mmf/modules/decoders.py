@@ -48,11 +48,7 @@ class VisDialDiscriminator(nn.Module):
         # (B x D) x HIDDEN_DIM => (B x D) x 100 x HIDDEN_DIM
         encoder_output = encoder_output.unsqueeze(1).expand(-1, noptions, -1)
 
-        # (B x D) x 100 x HIDDEN_DIM * (B x D) x 100 x HIDDEN_DIM = SAME THING
-        # SUM => (B x D) x 100
-        scores = torch.sum(answer_options * encoder_output, dim=2)
-
-        return scores
+        return torch.sum(answer_options * encoder_output, dim=2)
 
 
 class LanguageDecoder(nn.Module):

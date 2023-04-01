@@ -33,12 +33,10 @@ class TestModuleMetrics(unittest.TestCase):
 
         caption_bleu4 = metrics.CaptionBleu4Metric()
         expected = Sample()
-        predicted = dict()
-
         # Test complete match
         expected.answers = torch.empty((5, 5, 10))
         expected.answers.fill_(4)
-        predicted["scores"] = torch.zeros((5, 10, 19))
+        predicted = {"scores": torch.zeros((5, 10, 19))}
         predicted["scores"][:, :, 4] = 1.0
 
         self.assertEqual(caption_bleu4.calculate(expected, predicted).item(), 1.0)
@@ -56,20 +54,20 @@ class TestModuleMetrics(unittest.TestCase):
 
     def _test_binary_metric(self, metric, value):
         sample = Sample()
-        predicted = dict()
-
         sample.targets = torch.tensor(
             [[0, 1], [1, 0], [1, 0], [0, 1]], dtype=torch.float
         )
-        predicted["scores"] = torch.tensor(
-            [
-                [-0.9332, 0.8149],
-                [-0.8391, 0.6797],
-                [-0.7235, 0.7220],
-                [-0.9043, 0.3078],
-            ],
-            dtype=torch.float,
-        )
+        predicted = {
+            "scores": torch.tensor(
+                [
+                    [-0.9332, 0.8149],
+                    [-0.8391, 0.6797],
+                    [-0.7235, 0.7220],
+                    [-0.9043, 0.3078],
+                ],
+                dtype=torch.float,
+            )
+        }
         self.assertAlmostEqual(metric.calculate(sample, predicted).item(), value, 4)
 
         sample.targets = torch.tensor([1, 0, 0, 1], dtype=torch.long)
@@ -77,20 +75,20 @@ class TestModuleMetrics(unittest.TestCase):
 
     def _test_multiclass_metric(self, metric, value):
         sample = Sample()
-        predicted = dict()
-
         sample.targets = torch.tensor(
             [[0, 1, 0], [0, 0, 1], [1, 0, 0], [0, 0, 1]], dtype=torch.float
         )
-        predicted["scores"] = torch.tensor(
-            [
-                [-0.9332, 0.8149, 0.3491],
-                [-0.8391, 0.6797, -0.3410],
-                [-0.7235, 0.7220, 0.9104],
-                [0.9043, 0.3078, -0.4210],
-            ],
-            dtype=torch.float,
-        )
+        predicted = {
+            "scores": torch.tensor(
+                [
+                    [-0.9332, 0.8149, 0.3491],
+                    [-0.8391, 0.6797, -0.3410],
+                    [-0.7235, 0.7220, 0.9104],
+                    [0.9043, 0.3078, -0.4210],
+                ],
+                dtype=torch.float,
+            )
+        }
         self.assertAlmostEqual(metric.calculate(sample, predicted).item(), value, 4)
 
         sample.targets = torch.tensor([1, 2, 0, 2], dtype=torch.long)
@@ -98,20 +96,20 @@ class TestModuleMetrics(unittest.TestCase):
 
     def _test_multilabel_metric(self, metric, value):
         sample = Sample()
-        predicted = dict()
-
         sample.targets = torch.tensor(
             [[0, 1, 1], [1, 0, 1], [1, 0, 1], [0, 0, 1]], dtype=torch.float
         )
-        predicted["scores"] = torch.tensor(
-            [
-                [-0.9332, 0.8149, 0.3491],
-                [-0.8391, 0.6797, -0.3410],
-                [-0.7235, 0.7220, 0.9104],
-                [0.9043, 0.3078, -0.4210],
-            ],
-            dtype=torch.float,
-        )
+        predicted = {
+            "scores": torch.tensor(
+                [
+                    [-0.9332, 0.8149, 0.3491],
+                    [-0.8391, 0.6797, -0.3410],
+                    [-0.7235, 0.7220, 0.9104],
+                    [0.9043, 0.3078, -0.4210],
+                ],
+                dtype=torch.float,
+            )
+        }
         self.assertAlmostEqual(metric.calculate(sample, predicted).item(), value, 4)
 
     def test_micro_f1(self):

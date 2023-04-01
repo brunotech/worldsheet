@@ -162,9 +162,7 @@ class TestDataBuilder:
         db_output_folder = os.path.join(output_folder, "db/")
         os.makedirs(db_output_folder, exist_ok=True)
 
-        output = []
-        for d in data:
-            output.append(json.dumps(d))
+        output = [json.dumps(d) for d in data]
         output = "\n".join(output)
 
         with open(os.path.join(db_output_folder, f"{name}.jsonl"), "w") as f:
@@ -200,12 +198,9 @@ class TestDataBuilder:
         elif db_file.endswith(".jsonl"):
             file_type = "jsonl"
             with open(db_file) as f:
-                data = []
-                for item in f.readlines():
-                    data.append(json.loads(item.strip("\n")))
+                data = [json.loads(item.strip("\n")) for item in f]
                 selected_data = np.random.choice(data, size=num_samples, replace=False)
 
-        # Expecting JSON to be in COCOJSONFormat or contain "data" attribute
         elif db_file.endswith(".json"):
             file_type = "json"
             with open(db_file) as f:
@@ -237,8 +232,8 @@ class TestDataBuilder:
             possible_images = self._get_attrs(item)
             for image in possible_images:
                 image = ".".join(image.split(".")[:-1])
-                feature = image + ".npy"
-                info = image + "_info.npy"
+                feature = f"{image}.npy"
+                info = f"{image}_info.npy"
                 features.add(os.path.join(feature_folder, feature))
                 features.add(os.path.join(feature_folder, info))
 
@@ -264,9 +259,9 @@ class TestDataBuilder:
                 break
 
         if pick == "identifier":
-            return [image + "-img0.jpg", image + "-img1.jpg"]
-        elif pick == "image_name" or pick == "image_id":
-            return [image + ".jpg"]
+            return [f"{image}-img0.jpg", f"{image}-img1.jpg"]
+        elif pick in ["image_name", "image_id"]:
+            return [f"{image}.jpg"]
         else:
             return [image]
 

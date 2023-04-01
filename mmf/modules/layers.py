@@ -80,10 +80,7 @@ class GatedTanh(nn.Module):
         y_tilda = torch.tanh(self.fc(x))
         gated = torch.sigmoid(self.gate_fc(x))
 
-        # Element wise multiplication
-        y = y_tilda * gated
-
-        return y
+        return y_tilda * gated
 
 
 # TODO: Do clean implementation without Sequential
@@ -91,8 +88,7 @@ class ReLUWithWeightNormFC(nn.Module):
     def __init__(self, in_dim, out_dim):
         super().__init__()
 
-        layers = []
-        layers.append(weight_norm(nn.Linear(in_dim, out_dim), dim=None))
+        layers = [weight_norm(nn.Linear(in_dim, out_dim), dim=None)]
         layers.append(nn.ReLU())
         self.layers = nn.Sequential(*layers)
 
@@ -121,7 +117,7 @@ class ClassifierLayer(nn.Module):
         elif classifier_type == "linear":
             self.module = nn.Linear(in_dim, out_dim)
         else:
-            raise NotImplementedError("Unknown classifier type: %s" % classifier_type)
+            raise NotImplementedError(f"Unknown classifier type: {classifier_type}")
 
     def forward(self, *args, **kwargs):
         return self.module(*args, **kwargs)
@@ -212,9 +208,7 @@ class LogitClassifier(nn.Module):
     def forward(self, joint_embedding):
         text_val = self.linear_text(self.f_o_text(joint_embedding))
         image_val = self.linear_image(self.f_o_image(joint_embedding))
-        logit_value = text_val + image_val
-
-        return logit_value
+        return text_val + image_val
 
 
 class WeightNormClassifier(nn.Module):
@@ -229,8 +223,7 @@ class WeightNormClassifier(nn.Module):
         self.main = nn.Sequential(*layers)
 
     def forward(self, x):
-        logits = self.main(x)
-        return logits
+        return self.main(x)
 
 
 class Identity(nn.Module):
@@ -253,7 +246,7 @@ class ModalCombineLayer(nn.Module):
         elif combine_type == "top_down_attention_lstm":
             self.module = TopDownAttentionLSTM(img_feat_dim, txt_emb_dim, **kwargs)
         else:
-            raise NotImplementedError("Not implemented combine type: %s" % combine_type)
+            raise NotImplementedError(f"Not implemented combine type: {combine_type}")
 
         self.out_dim = self.module.out_dim
 
@@ -320,8 +313,7 @@ class MFH(nn.Module):
 
         # append at last feature
         cat_dim = len(feature_list[0].size()) - 1
-        feature = torch.cat(feature_list, dim=cat_dim)
-        return feature
+        return torch.cat(feature_list, dim=cat_dim)
 
     def mfb_squeeze(self, joint_feature):
         # joint_feature dim: N x k x dim or N x dim
@@ -370,7 +362,7 @@ class NonLinearElementMultiply(nn.Module):
         self.fa_image = ReLUWithWeightNormFC(image_feat_dim, kwargs["hidden_dim"])
         self.fa_txt = ReLUWithWeightNormFC(ques_emb_dim, kwargs["hidden_dim"])
 
-        context_dim = kwargs.get("context_dim", None)
+        context_dim = kwargs.get("context_dim")
         if context_dim is not None:
             self.fa_context = ReLUWithWeightNormFC(context_dim, kwargs["hidden_dim"])
 
@@ -481,7 +473,7 @@ class TransformLayer(nn.Module):
             self.module = ConvTransform(in_dim, out_dim, hidden_dim)
         else:
             raise NotImplementedError(
-                "Unknown post combine transform type: %s" % transform_type
+                f"Unknown post combine transform type: {transform_type}"
             )
         self.out_dim = self.module.out_dim
 
@@ -572,11 +564,7 @@ class BCNet(nn.Module):
             v_ = self.v_net(v).transpose(1, 2).unsqueeze(3)
             q_ = self.q_net(q).transpose(1, 2).unsqueeze(2)
             d_ = torch.matmul(v_, q_)
-            logits = d_.transpose(1, 2).transpose(2, 3)
-            return logits
-
-        # broadcast Hadamard product, matrix-matrix production
-        # fast computation but memory inefficient
+            return d_.transpose(1, 2).transpose(2, 3)
         elif self.h_out <= self.c:
             v_ = self.dropout(self.v_net(v)).unsqueeze(1)
             q_ = self.q_net(q)
@@ -585,8 +573,6 @@ class BCNet(nn.Module):
             logits = logits + self.h_bias
             return logits
 
-        # batch outer product, linear projection
-        # memory efficient but slow computation
         else:
             v_ = self.dropout(self.v_net(v)).transpose(1, 2).unsqueeze(3)
             q_ = self.q_net(q).transpose(1, 2).unsqueeze(2)
@@ -726,10 +712,7 @@ class BranchCombineLayer(nn.Module):
             self.layer_norm[2](self.linear_ques[1](q) + self.linear_cga[1](v_cga)),
         ]
 
-        if self.training:
-            return torch.stack(feat, dim=1)
-
-        return feat[0]
+        return torch.stack(feat, dim=1) if self.training else feat[0]
 
 
 class AttnPool1d(nn.Module):

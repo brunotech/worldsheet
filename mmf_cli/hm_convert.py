@@ -76,11 +76,7 @@ class HMConverter:
 
     def convert(self):
         config = self.configuration.get_config()
-        data_dir = config.env.data_dir
-
-        if self.args.mmf_data_folder:
-            data_dir = self.args.mmf_data_folder
-
+        data_dir = self.args.mmf_data_folder or config.env.data_dir
         bypass_checksum = False
         if self.args.bypass_checksum:
             bypass_checksum = bool(self.args.bypass_checksum)
@@ -93,10 +89,7 @@ class HMConverter:
         images_path = os.path.join(base_path, "images")
         PathManager.mkdirs(images_path)
 
-        move_dir = False
-        if self.args.move:
-            move_dir = bool(self.args.move)
-
+        move_dir = bool(self.args.move) if self.args.move else False
         if not bypass_checksum:
             self.checksum(self.args.zip_file, self.POSSIBLE_CHECKSUMS)
 
@@ -144,14 +137,16 @@ class HMConverter:
         destination = file
 
         with PathManager.open(destination, "rb") as f:
-            print("Starting checksum for {}".format(os.path.basename(file)))
+            print(f"Starting checksum for {os.path.basename(file)}")
             for byte_block in iter(lambda: f.read(65536), b""):
                 sha256_hash.update(byte_block)
             if sha256_hash.hexdigest() not in hashes:
                 # remove_dir(download_path)
                 raise AssertionError(
-                    f"Checksum of downloaded file does not match the expected "
-                    + "checksum. Please try again."
+                    (
+                        "Checksum of downloaded file does not match the expected "
+                        + "checksum. Please try again."
+                    )
                 )
             else:
                 print("Checksum successful")

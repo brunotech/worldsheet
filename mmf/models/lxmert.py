@@ -66,8 +66,7 @@ class BertCrossattLayer(nn.Module):
             encoder_hidden_states=ctx_tensor,
             encoder_attention_mask=ctx_att_mask,
         )[0]
-        attention_output = self.output(output, input_tensor)
-        return attention_output
+        return self.output(output, input_tensor)
 
 
 class BertClassificationHead(nn.Module):
@@ -89,8 +88,7 @@ class BertClassificationHead(nn.Module):
         )
 
     def forward(self, x):
-        logit = self.logit_fc(x)
-        return logit
+        return self.logit_fc(x)
 
 
 class BertLMPredictionHead(nn.Module):
@@ -168,10 +166,10 @@ class BertVisualObjHead(nn.Module):
 
     def forward(self, hidden_states):
         hidden_states = self.transform(hidden_states)
-        output = {}
-        for key in self.visual_losses:
-            output[key] = self.decoder_dict[key](hidden_states)
-        return output
+        return {
+            key: self.decoder_dict[key](hidden_states)
+            for key in self.visual_losses
+        }
 
 
 class BertPreTrainingHeads(nn.Module):
@@ -416,7 +414,7 @@ class LXMERTForPretraining(nn.Module):
             config=BertConfig.from_dict(
                 OmegaConf.to_container(self.config, resolve=True)
             ),
-            cache_dir=os.path.join(get_mmf_cache_dir(), "distributed_{}".format(-1)),
+            cache_dir=os.path.join(get_mmf_cache_dir(), 'distributed_-1'),
         )
 
         self.num_labels = config.num_labels
@@ -538,13 +536,6 @@ class LXMERTForPretraining(nn.Module):
                 ) = self.visual_loss_config[key]
                 if key == "attr":
                     continue
-                elif key == "obj":
-                    temp_obj_labels_dict = obj_labels.max(-1)
-                    mask_conf = temp_obj_labels_dict.values
-                    visn_loss = self.loss_fcts[loss_fct_name](
-                        visn_prediction_scores.view(-1, output_dim),
-                        temp_obj_labels_dict.indices.view(-1),
-                    )
                 elif key == "feat":
                     if type(masked_image_labels) is None:
                         continue
@@ -552,6 +543,13 @@ class LXMERTForPretraining(nn.Module):
                     visn_loss = self.loss_fcts[loss_fct_name](
                         visn_prediction_scores.view(-1, output_dim),
                         visual_feats.view(-1, output_dim),
+                    )
+                elif key == "obj":
+                    temp_obj_labels_dict = obj_labels.max(-1)
+                    mask_conf = temp_obj_labels_dict.values
+                    visn_loss = self.loss_fcts[loss_fct_name](
+                        visn_prediction_scores.view(-1, output_dim),
+                        temp_obj_labels_dict.indices.view(-1),
                     )
                 if visn_loss.dim() > 1:  # Regression Losses
                     visn_loss = visn_loss.mean(1)
@@ -575,7 +573,7 @@ class LXMERTForClassification(nn.Module):
             config=BertConfig.from_dict(
                 OmegaConf.to_container(self.config, resolve=True)
             ),
-            cache_dir=os.path.join(get_mmf_cache_dir(), "distributed_{}".format(-1)),
+            cache_dir=os.path.join(get_mmf_cache_dir(), 'distributed_-1'),
         )
 
         self.classifier = BertVisualAnswerHead(
@@ -621,7 +619,6 @@ class LXMERTForClassification(nn.Module):
             output_all_attention_masks,
         )
 
-        output = {}
         if output_all_attention_masks:
             raise NotImplementedError
 
@@ -630,9 +627,7 @@ class LXMERTForClassification(nn.Module):
 
         logits = self.classifier(pooled_output)
         reshaped_logits = logits.contiguous().view(-1, self.config.num_labels)
-        output["scores"] = reshaped_logits
-
-        return output
+        return {"scores": reshaped_logits}
 
 
 @registry.register_model("lxmert")
@@ -745,24 +740,22 @@ class LXMERT(BaseModel):
                 num_features=params["max_features"],
                 name=params["dataset_name"],
             )
-            loss_key = "{}/{}".format(
-                sample_list.dataset_name, sample_list.dataset_type
-            )
+            loss_key = f"{sample_list.dataset_name}/{sample_list.dataset_type}"
             output_dict["losses"] = {}
             if "masked_lm_loss" in output_dict.keys():
-                output_dict["losses"][loss_key + "/masked_lm_loss"] = output_dict.pop(
-                    "masked_lm_loss"
-                )
+                output_dict["losses"][
+                    f"{loss_key}/masked_lm_loss"
+                ] = output_dict.pop("masked_lm_loss")
             if "matched_loss" in output_dict.keys():
-                output_dict["losses"][loss_key + "/matched_loss"] = output_dict.pop(
-                    "matched_loss"
-                )
+                output_dict["losses"][
+                    f"{loss_key}/matched_loss"
+                ] = output_dict.pop("matched_loss")
             if "visn_loss" in output_dict.keys():
-                output_dict["losses"][loss_key + "/visn_loss"] = output_dict.pop(
+                output_dict["losses"][f"{loss_key}/visn_loss"] = output_dict.pop(
                     "visn_loss"
                 )
             if "answer_loss" in output_dict.keys():
-                output_dict["losses"][loss_key + "/answer_loss"] = output_dict.pop(
+                output_dict["losses"][f"{loss_key}/answer_loss"] = output_dict.pop(
                     "answer_loss"
                 )
         else:

@@ -20,18 +20,19 @@ class COCOBuilder(VQA2Builder):
     # TODO: Deprecate this method and move configuration updates directly to processors
     def update_registry_for_model(self, config):
         registry.register(
-            self.dataset_name + "_text_vocab_size",
+            f"{self.dataset_name}_text_vocab_size",
             self.dataset.text_processor.get_vocab_size(),
         )
 
         if hasattr(self.dataset, "answer_processor"):
             registry.register(
-                self.dataset_name + "_num_final_outputs",
+                f"{self.dataset_name}_num_final_outputs",
                 self.dataset.answer_processor.get_vocab_size(),
             )
 
             registry.register(
-                self.dataset_name + "_answer_processor", self.dataset.answer_processor
+                f"{self.dataset_name}_answer_processor",
+                self.dataset.answer_processor,
             )
 
     @classmethod

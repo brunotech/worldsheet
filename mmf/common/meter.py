@@ -79,25 +79,17 @@ class Meter:
         if attr in self.__dict__:
             return self.__dict__[attr]
         raise AttributeError(
-            "'{}' object has no attribute '{}'".format(type(self).__name__, attr)
+            f"'{type(self).__name__}' object has no attribute '{attr}'"
         )
 
     def get_scalar_dict(self):
-        scalar_dict = {}
-        for k, v in self.meters.items():
-            scalar_dict[k] = v.get_latest()
-
-        return scalar_dict
+        return {k: v.get_latest() for k, v in self.meters.items()}
 
     def get_log_dict(self):
-        log_dict = {}
-        for k, v in self.meters.items():
-            if "train" in k:
-                log_dict[k] = f"{v.median:.4f}"
-                # log_dict[f"{k}/avg"] = f"{v.global_avg:.4f}"
-            else:
-                log_dict[k] = f"{v.global_avg:.4f}"
-        return log_dict
+        return {
+            k: f"{v.median:.4f}" if "train" in k else f"{v.global_avg:.4f}"
+            for k, v in self.meters.items()
+        }
 
     def __str__(self):
         loss_str = []

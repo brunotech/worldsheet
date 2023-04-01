@@ -178,16 +178,14 @@ def built(path, version_string=None):
     sure that if we update our features or anything else features are updated
     for the end user.
     """
-    if version_string:
-        fname = os.path.join(path, ".built.json")
-        if not PathManager.isfile(fname):
-            return False
-        else:
-            with PathManager.open(fname, "r") as read:
-                text = json.load(read)
-            return text.get("version", None) == version_string
-    else:
+    if not version_string:
         return PathManager.isfile(os.path.join(path, ".built.json"))
+    fname = os.path.join(path, ".built.json")
+    if not PathManager.isfile(fname):
+        return False
+    with PathManager.open(fname, "r") as read:
+        text = json.load(read)
+    return text.get("version", None) == version_string
 
 
 def mark_done(path, version_string=None):
@@ -201,8 +199,7 @@ def mark_done(path, version_string=None):
         path (str): The file path to mark as built
         version_string (str): The version of this dataset
     """
-    data = {}
-    data["created_at"] = str(datetime.datetime.today())
+    data = {"created_at": str(datetime.datetime.now())}
     data["version"] = version_string
     with PathManager.open(os.path.join(path, ".built.json"), "w") as f:
         json.dump(data, f)
@@ -227,13 +224,13 @@ def download(url, path, fname, redownload=True, disable_tqdm=False):
         # First test if the link is actually downloadable
         check_header(url)
         if not disable_tqdm:
-            print("[ Downloading: " + url + " to " + outfile + " ]")
+            print(f"[ Downloading: {url} to {outfile} ]")
         pbar = tqdm.tqdm(
             unit="B", unit_scale=True, desc=f"Downloading {fname}", disable=disable_tqdm
         )
 
     while download and retry >= 0:
-        resume_file = outfile + ".part"
+        resume_file = f"{outfile}.part"
         resume = PathManager.isfile(resume_file)
         if resume:
             resume_pos = os.path.getsize(resume_file)
@@ -358,7 +355,7 @@ def download_pretrained_model(model_name, *args, **kwargs):
         # Version and Resources are not present time to try the defaults
         try:
             model_config = model_config.defaults
-            download_path = os.path.join(model_data_dir, model_name + ".defaults")
+            download_path = os.path.join(model_data_dir, f"{model_name}.defaults")
         except omegaconf.errors.OmegaConfBaseException as e:
             print(
                 f"Model name {model_name} doesn't specify 'resources' and 'version' "
@@ -451,7 +448,7 @@ def decompress(path, fname, delete_original=True):
         delete_original (bool, optional): If true, the archive will be deleted
                                           after extraction. Default to True.
     """
-    print("Unpacking " + fname)
+    print(f"Unpacking {fname}")
     fullpath = os.path.join(path, fname)
     shutil.unpack_archive(fullpath, path)
     if delete_original:
@@ -459,10 +456,14 @@ def decompress(path, fname, delete_original=True):
 
 
 def _get_confirm_token(response):
-    for key, value in response.cookies.items():
-        if key.startswith("download_warning"):
-            return value
-    return None
+    return next(
+        (
+            value
+            for key, value in response.cookies.items()
+            if key.startswith("download_warning")
+        ),
+        None,
+    )
 
 
 def download_from_google_drive(gd_id, destination, redownload=True):
@@ -481,9 +482,7 @@ def download_from_google_drive(gd_id, destination, redownload=True):
 
     with requests.Session() as session:
         response = session.get(URL, params={"id": gd_id}, stream=True)
-        token = _get_confirm_token(response)
-
-        if token:
+        if token := _get_confirm_token(response):
             response.close()
             params = {"id": gd_id, "confirm": token}
             response = session.get(URL, params=params, stream=True)

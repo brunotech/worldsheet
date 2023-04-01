@@ -200,11 +200,7 @@ class MultiDatasetLoader:
 
         # Clear off old iterators
         self._finished_iterators = {}
-        self.iterators = []
-
-        for loader in self.loaders:
-            self.iterators.append(iter(loader))
-
+        self.iterators = [iter(loader) for loader in self.loaders]
         self.change_dataloader()
 
         return self
@@ -248,13 +244,11 @@ class MultiDatasetLoader:
                     raise
                 else:
                     self.change_dataloader()
-                next_batch = next(self._chosen_iterator)
             else:
                 iterator = iter(self.current_loader)
                 self.iterators[self.current_index] = iterator
                 self._chosen_iterator = iterator
-                next_batch = next(self._chosen_iterator)
-
+            next_batch = next(self._chosen_iterator)
         return next_batch
 
     def change_dataloader(self):

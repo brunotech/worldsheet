@@ -132,14 +132,13 @@ class MeshRenderer(BaseModel):
 
     def get_optimizer_parameters(self, config):
         # named_parameters contains ALL parameters, including those in discriminator
-        named_parameters = [(n, p) for n, p in self.named_parameters()]
+        named_parameters = list(self.named_parameters())
 
-        param_groups = []
         registered = set()
 
         # 1. backbone for ResNet-50
         backbone_params = list(self.offset_and_depth_predictor.backbone.parameters())
-        param_groups.append({"params": backbone_params, "lr": self.config.backbone_lr})
+        param_groups = [{"params": backbone_params, "lr": self.config.backbone_lr}]
         registered.update(backbone_params)
 
         # 2. inpainting generator
@@ -197,20 +196,18 @@ class MeshRenderer(BaseModel):
         return xy_offset, z_grid
 
     def forward(self, sample_list):
-        if not self.config.fill_z_with_gt:
-            # use the transformed image (after mean subtraction and normalization) as
-            # network input
-            xy_offset, z_grid = self.offset_and_depth_predictor(sample_list.trans_img_0)
-        else:
-            xy_offset, z_grid = self.get_offset_and_depth_from_gt(sample_list)
-
+        xy_offset, z_grid = (
+            self.get_offset_and_depth_from_gt(sample_list)
+            if self.config.fill_z_with_gt
+            else self.offset_and_depth_predictor(sample_list.trans_img_0)
+        )
         if self.config.force_zero_xy_offset:
             xy_offset = torch.zeros_like(xy_offset)
 
-        rendering_results = {}
-        if not self.config.train_z_grid_only:
-            # use the original image (RGB value in 0~1) as rendering input
-            rendering_results = self.novel_view_projector(
+        rendering_results = (
+            {}
+            if self.config.train_z_grid_only
+            else self.novel_view_projector(
                 xy_offset=xy_offset,
                 z_grid=z_grid,
                 rgb_in=sample_list.orig_img_0,
@@ -220,9 +217,9 @@ class MeshRenderer(BaseModel):
                 T_out_list=[sample_list.T_0, sample_list.T_1],
                 render_mesh_shape=self.config.render_mesh_shape_for_vis,
             )
-
+        )
+        _, rgba_1_rec = rendering_results["rgba_out_rec_list"]
         if self.config.use_inpainting:
-            _, rgba_1_rec = rendering_results["rgba_out_rec_list"]
             if self.config.sanity_check_inpaint_with_gt:
                 # as a sanity check, use the ground-truth image as input to make sure
                 # the generator has enough capacity to perfectly reconstruct it.
@@ -236,7 +233,6 @@ class MeshRenderer(BaseModel):
             rendering_results["rgb_1_inpaint"] = rgb_1_inpaint
             rendering_results["rgb_1_out"] = rendering_results["rgb_1_inpaint"]
         else:
-            _, rgba_1_rec = rendering_results["rgba_out_rec_list"]
             rendering_results["rgb_1_out"] = rgba_1_rec[..., :3]
 
         # return only the rendering results and skip loss computation, usually for
@@ -289,9 +285,9 @@ class MeshRenderer(BaseModel):
                 im_input = skimage.img_as_ubyte(im_input.detach().cpu().numpy())
                 im_tgt = skimage.img_as_ubyte(im_tgt.detach().cpu().numpy())
 
-                skimage.io.imsave(save_sub_dir + "/output_image_.png", im_output)
-                skimage.io.imsave(save_sub_dir + "/input_image_.png", im_input)
-                skimage.io.imsave(save_sub_dir + "/tgt_image_.png", im_tgt)
+                skimage.io.imsave(f"{save_sub_dir}/output_image_.png", im_output)
+                skimage.io.imsave(f"{save_sub_dir}/input_image_.png", im_input)
+                skimage.io.imsave(f"{save_sub_dir}/tgt_image_.png", im_tgt)
                 continue
 
             if self.config.save_for_external_inpainting:
@@ -306,13 +302,13 @@ class MeshRenderer(BaseModel):
                 base_id = image_id.split("_")[0]
                 im_src = skimage.img_as_ubyte(im_src.detach().cpu().numpy())
                 im_tgt = skimage.img_as_ubyte(im_tgt.detach().cpu().numpy())
-                skimage.io.imsave(self.inpainting_src_dir + f"/{base_id}.png", im_src)
-                skimage.io.imsave(self.inpainting_tgt_dir + f"/{base_id}.png", im_tgt)
+                skimage.io.imsave(f"{self.inpainting_src_dir}/{base_id}.png", im_src)
+                skimage.io.imsave(f"{self.inpainting_tgt_dir}/{base_id}.png", im_tgt)
                 continue
 
             save_file = os.path.join(
                 self.config.forward_results_dir,
-                '{}_outputs.npz'.format(image_id.replace("/", "-"))
+                f'{image_id.replace("/", "-")}_outputs.npz',
             )
             save_dict = {
                 "orig_img_0": sample_list.orig_img_0[n_im],
@@ -326,22 +322,22 @@ class MeshRenderer(BaseModel):
                 "depth_1_rec": depth_1_rec[n_im],
             }
             if self.config.render_mesh_shape_for_vis:
-                save_dict.update({
+                save_dict |= {
                     "mesh_shape_0": mesh_shape_0[n_im],
                     "mesh_shape_1": mesh_shape_1[n_im],
                     "mesh_verts_world_coords": mesh_verts_world_coords[n_im],
-                })
+                }
             if sample_list.dataset_name in ["synsin_habitat", "replica"]:
-                save_dict.update({
+                save_dict |= {
                     "depth_0": sample_list.depth_0[n_im],
                     "depth_1": sample_list.depth_1[n_im],
                     "depth_mask_0": sample_list.depth_mask_0[n_im],
                     "depth_mask_1": sample_list.depth_mask_1[n_im],
-                })
+                }
             if self.config.use_inpainting:
                 rgb_1_inpaint = rendering_results["rgb_1_inpaint"]
                 rgb_1_inpaint = rgb_1_inpaint.clamp(min=0, max=1)
-                save_dict.update({"rgb_1_inpaint": rgb_1_inpaint[n_im]})
+                save_dict["rgb_1_inpaint"] = rgb_1_inpaint[n_im]
 
             save_dict = {k: v.detach().cpu().numpy() for k, v in save_dict.items()}
             np.savez(save_file, **save_dict)
@@ -389,13 +385,13 @@ class MeshRenderer(BaseModel):
             else:
                 vgg19_perceptual_1 = torch.tensor(0., device=rgb_1_rec.device)
 
-            losses_unscaled.update({
+            losses_unscaled |= {
                 "depth_l1_0": depth_l1_0,
                 "depth_l1_1": depth_l1_1,
                 "image_l1_1": image_l1_1,
                 "vgg19_perceptual_1": vgg19_perceptual_1,
                 "mesh_laplacian": self.loss_mesh_laplacian(scaled_verts),
-            })
+            }
 
         if self.config.use_inpainting:
             rgb_1_inpaint = rendering_results["rgb_1_inpaint"]
@@ -408,10 +404,10 @@ class MeshRenderer(BaseModel):
                 )
             else:
                 vgg19_perceptual_1_inpaint = torch.tensor(0., device=rgb_1_rec.device)
-            losses_unscaled.update({
+            losses_unscaled |= {
                 "image_l1_1_inpaint": image_l1_1_inpaint,
                 "vgg19_perceptual_1_inpaint": vgg19_perceptual_1_inpaint,
-            })
+            }
 
             if self.use_discriminator:
                 g_losses = self.mesh_gan_losses(
@@ -419,26 +415,24 @@ class MeshRenderer(BaseModel):
                     alpha_mask=rgba_1_rec[..., 3:4].ge(1e-4).float(),
                     update_discriminator=self.training
                 )
-                losses_unscaled.update(g_losses)
+                losses_unscaled |= g_losses
 
         for k, v in losses_unscaled.items():
             if (v is not None) and (not torch.all(torch.isfinite(v)).item()):
-                raise Exception("loss {} becomes {}".format(k, v.mean().item()))
-        losses = {
-            f"{sample_list.dataset_type}/{sample_list.dataset_name}/{k}":
-                (v * self.loss_weights[k])
-            for k, v in losses_unscaled.items() if self.loss_weights[k] != 0
+                raise Exception(f"loss {k} becomes {v.mean().item()}")
+        return {
+            f"{sample_list.dataset_type}/{sample_list.dataset_name}/{k}": (
+                v * self.loss_weights[k]
+            )
+            for k, v in losses_unscaled.items()
+            if self.loss_weights[k] != 0
         }
-
-        return losses
 
     def forward_metrics(self, sample_list, rendering_results):
         rgb_1_out = rendering_results["rgb_1_out"]
         rgb_1_gt = sample_list.orig_img_1
         vis_mask = sample_list.vis_mask if hasattr(sample_list, "vis_mask") else None
-        metrics_dict = self.metrics(rgb_1_out, rgb_1_gt, vis_mask)
-
-        return metrics_dict
+        return self.metrics(rgb_1_out, rgb_1_gt, vis_mask)
 
 
 class OffsetAndZGridPredictor(nn.Module):

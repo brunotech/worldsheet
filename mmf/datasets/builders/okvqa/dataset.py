@@ -30,11 +30,11 @@ class OKVQADataset(MMFDataset):
         return OKVQAAnnotationDatabase(self.config, annotation_path)
 
     def get_image_path(self, image_id: Union[str, int]) -> str:
-        if self.dataset_type == "train":
-            image_path = f"COCO_train2014_{str(image_id).zfill(12)}.jpg"
-        else:
-            image_path = f"COCO_val2014_{str(image_id).zfill(12)}.jpg"
-        return image_path
+        return (
+            f"COCO_train2014_{str(image_id).zfill(12)}.jpg"
+            if self.dataset_type == "train"
+            else f"COCO_val2014_{str(image_id).zfill(12)}.jpg"
+        )
 
     def init_processors(self):
         super().init_processors()

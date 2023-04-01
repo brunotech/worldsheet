@@ -72,8 +72,7 @@ class Losses(nn.Module):
         super().__init__()
         self.losses = []
         self._evaluation_predict = registry.get("config").evaluation.predict
-        for loss in loss_list:
-            self.losses.append(MMFLoss(loss))
+        self.losses.extend(MMFLoss(loss) for loss in loss_list)
 
     def forward(self, sample_list, model_output, *args, **kwargs):
         """Takes in the original ``SampleList`` returned from DataLoader
@@ -99,10 +98,10 @@ class Losses(nn.Module):
             return output
 
         for loss in self.losses:
-            output.update(loss(sample_list, model_output, *args, **kwargs))
+            output |= loss(sample_list, model_output, *args, **kwargs)
 
-        registry_loss_key = "{}.{}.{}".format(
-            "losses", sample_list.dataset_name, sample_list.dataset_type
+        registry_loss_key = (
+            f"losses.{sample_list.dataset_name}.{sample_list.dataset_type}"
         )
         # Register the losses to registry
         registry.register(registry_loss_key, output)
@@ -160,10 +159,7 @@ class MMFLoss(nn.Module):
             assert is_mapping
             self.loss_criterion = loss_class(params)
         else:
-            if is_mapping:
-                loss_params = params.get("params", {})
-            else:
-                loss_params = {}
+            loss_params = params.get("params", {}) if is_mapping else {}
             self.loss_criterion = loss_class(**loss_params)
 
     def forward(self, sample_list, model_output, *args, **kwargs):
@@ -175,9 +171,7 @@ class MMFLoss(nn.Module):
         if loss.dim() == 0:
             loss = loss.view(1)
 
-        key = "{}/{}/{}".format(
-            sample_list.dataset_type, sample_list.dataset_name, self.name
-        )
+        key = f"{sample_list.dataset_type}/{sample_list.dataset_name}/{self.name}"
 
         return {key: loss}
 
@@ -308,9 +302,7 @@ class CaptionCrossEntropyLoss(nn.Module):
             scores, _ = pack_padded_sequence(scores, decode_lengths, batch_first=True)
             targets, _ = pack_padded_sequence(targets, decode_lengths, batch_first=True)
 
-        loss = F.cross_entropy(scores, targets)
-
-        return loss
+        return F.cross_entropy(scores, targets)
 
 
 @registry.register_loss("nll_loss")
@@ -528,9 +520,7 @@ class CombinedLoss(nn.Module):
         )
         loss2 *= target_score.size(1)
 
-        loss = self.weight_softmax * loss1 + loss2
-
-        return loss
+        return self.weight_softmax * loss1 + loss2
 
 
 @registry.register_loss("m4c_decoding_bce_with_mask")
@@ -549,8 +539,7 @@ class M4CDecodingBCEWithMaskLoss(nn.Module):
         losses *= loss_mask.unsqueeze(-1)
 
         count = torch.max(torch.sum(loss_mask), self.one.to(losses.device))
-        loss = torch.sum(losses) / count
-        return loss
+        return torch.sum(losses) / count
 
 
 @registry.register_loss("cross_entropy")

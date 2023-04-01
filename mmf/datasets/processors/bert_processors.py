@@ -127,11 +127,7 @@ class MaskedTokenProcessor(BaseProcessor):
         text_b = item.get("text_b", None)
 
         tokens_a = self._tokenizer.tokenize(text_a)
-        tokens_b = None
-
-        if text_b:
-            tokens_b = self._tokenizer.tokenize(text_b)
-
+        tokens_b = self._tokenizer.tokenize(text_b) if text_b else None
         self._truncate_seq_pair(tokens_a, tokens_b, self._max_seq_length - 2)
         output = self._convert_to_indices(
             tokens_a, tokens_b, probability=self._probability
@@ -149,11 +145,7 @@ class BertTokenizer(MaskedTokenProcessor):
 
     def __call__(self, item):
 
-        if "text" in item:
-            text_a = item["text"]
-        else:
-            text_a = " ".join(item["tokens"])
-
+        text_a = item["text"] if "text" in item else " ".join(item["tokens"])
         if isinstance(text_a, list):
             text_a = " ".join(text_a)
 
@@ -162,8 +154,7 @@ class BertTokenizer(MaskedTokenProcessor):
         # 'text_b' can be defined in the dataset preparation
         tokens_b = None
         if "text_b" in item:
-            text_b = item["text_b"]
-            if text_b:
+            if text_b := item["text_b"]:
                 tokens_b = self._tokenizer.tokenize(text_b)
 
         self._truncate_seq_pair(tokens_a, tokens_b, self._max_seq_length - 2)

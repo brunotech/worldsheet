@@ -33,7 +33,7 @@ class EarlyStopping:
         if "val" not in self.early_stop_criteria:
             self.early_stop_criteria = f"val/{self.early_stop_criteria}"
 
-        self.best_monitored_value = -np.inf if not minimize else np.inf
+        self.best_monitored_value = np.inf if minimize else -np.inf
         self.best_monitored_iteration = 0
         self.best_monitored_update = 0
         self.should_stop = should_stop
@@ -56,8 +56,7 @@ class EarlyStopping:
         value = meter.meters.get(self.early_stop_criteria, None)
         if value is None:
             raise ValueError(
-                "Criteria used for early stopping ({}) is not "
-                "present in meter.".format(self.early_stop_criteria)
+                f"Criteria used for early stopping ({self.early_stop_criteria}) is not present in meter."
             )
 
         value = value.global_avg
@@ -75,12 +74,11 @@ class EarlyStopping:
 
         elif self.best_monitored_update + self.patience < update:
             self.activated = True
-            if self.should_stop is True:
-                self.checkpoint.restore()
-                self.checkpoint.finalize()
-                return True
-            else:
+            if self.should_stop is not True:
                 return False
+            self.checkpoint.restore()
+            self.checkpoint.finalize()
+            return True
         else:
             self.checkpoint.save(update, iteration, update_best=False)
 

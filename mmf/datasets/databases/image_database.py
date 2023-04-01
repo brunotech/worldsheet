@@ -87,7 +87,7 @@ class ImageDatabase(torch.utils.data.Dataset):
         self.annotation_db = annotation_db
         self.loader = loader
         self.image_key = config.get("image_key", None)
-        self.image_key = image_key if image_key else self.image_key
+        self.image_key = image_key or self.image_key
         self.is_valid_file = is_valid_file
 
     @property
@@ -193,7 +193,7 @@ class ImageDatabase(torch.utils.data.Dataset):
                 break
 
         if pick == "identifier" and "left_url" in item and "right_url" in item:
-            return [image + "-img0", image + "-img1"]
+            return [f"{image}-img0", f"{image}-img1"]
         else:
             return [image]
 

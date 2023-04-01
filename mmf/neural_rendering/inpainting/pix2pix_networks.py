@@ -74,7 +74,7 @@ def get_norm_layer(norm_type="instance"):
     elif norm_type == "instance":
         norm_layer = functools.partial(nn.InstanceNorm2d, affine=False)
     else:
-        raise NotImplementedError("normalization layer [%s] is not found" % norm_type)
+        raise NotImplementedError(f"normalization layer [{norm_type}] is not found")
     return norm_layer
 
 
@@ -143,9 +143,7 @@ def define_D(
 def print_network(net):
     if isinstance(net, list):
         net = net[0]
-    num_params = 0
-    for param in net.parameters():
-        num_params += param.numel()
+    num_params = sum(param.numel() for param in net.parameters())
     print(net)
     print("Total number of parameters: %d" % num_params)
 
@@ -213,10 +211,10 @@ class VGGLoss(nn.Module):
 
     def forward(self, x, y):
         x_vgg, y_vgg = self.vgg(x), self.vgg(y)
-        loss = 0
-        for i in range(len(x_vgg)):
-            loss += self.weights[i] * self.criterion(x_vgg[i], y_vgg[i].detach())
-        return loss
+        return sum(
+            self.weights[i] * self.criterion(x_vgg[i], y_vgg[i].detach())
+            for i in range(len(x_vgg))
+        )
 
 
 ##############################################################################
@@ -268,15 +266,14 @@ class LocalEnhancer(nn.Module):
                 norm_layer(ngf_global * 2),
                 nn.ReLU(True),
             ]
-            ### residual blocks
-            model_upsample = []
-            for i in range(n_blocks_local):
-                model_upsample += [
-                    ResnetBlock(
-                        ngf_global * 2, padding_type=padding_type, norm_layer=norm_layer
-                    )
-                ]
-
+            model_upsample = [
+                ResnetBlock(
+                    ngf_global * 2,
+                    padding_type=padding_type,
+                    norm_layer=norm_layer,
+                )
+                for _ in range(n_blocks_local)
+            ]
             ### upsample
             model_upsample += [
                 nn.ConvTranspose2d(
@@ -299,8 +296,8 @@ class LocalEnhancer(nn.Module):
                     nn.Tanh(),
                 ]
 
-            setattr(self, "model" + str(n) + "_1", nn.Sequential(*model_downsample))
-            setattr(self, "model" + str(n) + "_2", nn.Sequential(*model_upsample))
+            setattr(self, f"model{str(n)}_1", nn.Sequential(*model_downsample))
+            setattr(self, f"model{str(n)}_2", nn.Sequential(*model_upsample))
 
         self.downsample = nn.AvgPool2d(
             3, stride=2, padding=[1, 1], count_include_pad=False
@@ -309,15 +306,16 @@ class LocalEnhancer(nn.Module):
     def forward(self, input):
         ### create input pyramid
         input_downsampled = [input]
-        for i in range(self.n_local_enhancers):
-            input_downsampled.append(self.downsample(input_downsampled[-1]))
-
+        input_downsampled.extend(
+            self.downsample(input_downsampled[-1])
+            for _ in range(self.n_local_enhancers)
+        )
         ### output at coarest level
         output_prev = self.model(input_downsampled[-1])
         ### build up one layer at a time
         for n_local_enhancers in range(1, self.n_local_enhancers + 1):
-            model_downsample = getattr(self, "model" + str(n_local_enhancers) + "_1")
-            model_upsample = getattr(self, "model" + str(n_local_enhancers) + "_2")
+            model_downsample = getattr(self, f"model{str(n_local_enhancers)}_1")
+            model_upsample = getattr(self, f"model{str(n_local_enhancers)}_2")
             input_i = input_downsampled[self.n_local_enhancers - n_local_enhancers]
             output_prev = model_upsample(model_downsample(input_i) + output_prev)
         return output_prev
@@ -413,7 +411,7 @@ class ResnetBlock(nn.Module):
         elif padding_type == "zero":
             p = 1
         else:
-            raise NotImplementedError("padding [%s] is not implemented" % padding_type)
+            raise NotImplementedError(f"padding [{padding_type}] is not implemented")
 
         conv_block += [
             nn.Conv2d(dim, dim, kernel_size=3, padding=p),
@@ -431,14 +429,13 @@ class ResnetBlock(nn.Module):
         elif padding_type == "zero":
             p = 1
         else:
-            raise NotImplementedError("padding [%s] is not implemented" % padding_type)
+            raise NotImplementedError(f"padding [{padding_type}] is not implemented")
         conv_block += [nn.Conv2d(dim, dim, kernel_size=3, padding=p), norm_layer(dim)]
 
         return nn.Sequential(*conv_block)
 
     def forward(self, x):
-        out = x + self.conv_block(x)
-        return out
+        return x + self.conv_block(x)
 
 
 class Encoder(nn.Module):
@@ -536,26 +533,20 @@ class MultiscaleDiscriminator(nn.Module):
             )
             if getIntermFeat:
                 for j in range(n_layers + 2):
-                    setattr(
-                        self,
-                        "scale" + str(i) + "_layer" + str(j),
-                        getattr(netD, "model" + str(j)),
-                    )
+                    setattr(self, f"scale{str(i)}_layer{str(j)}", getattr(netD, f"model{str(j)}"))
             else:
-                setattr(self, "layer" + str(i), netD.model)
+                setattr(self, f"layer{str(i)}", netD.model)
 
         self.downsample = nn.AvgPool2d(
             3, stride=2, padding=[1, 1], count_include_pad=False
         )
 
     def singleD_forward(self, model, input):
-        if self.getIntermFeat:
-            result = [input]
-            for i in range(len(model)):
-                result.append(model[i](result[-1]))
-            return result[1:]
-        else:
+        if not self.getIntermFeat:
             return [model(input)]
+        result = [input]
+        result.extend(model[i](result[-1]) for i in range(len(model)))
+        return result[1:]
 
     def forward(self, input):
         num_D = self.num_D
@@ -564,11 +555,11 @@ class MultiscaleDiscriminator(nn.Module):
         for i in range(num_D):
             if self.getIntermFeat:
                 model = [
-                    getattr(self, "scale" + str(num_D - 1 - i) + "_layer" + str(j))
+                    getattr(self, f"scale{str(num_D - 1 - i)}_layer{str(j)}")
                     for j in range(self.n_layers + 2)
                 ]
             else:
-                model = getattr(self, "layer" + str(num_D - 1 - i))
+                model = getattr(self, f"layer{str(num_D - 1 - i)}")
             result.append(self.singleD_forward(model, input_downsampled))
             if i != (num_D - 1):
                 input_downsampled = self.downsample(input_downsampled)
@@ -600,7 +591,7 @@ class NLayerDiscriminator(nn.Module):
         ]
 
         nf = ndf
-        for n in range(1, n_layers):
+        for _ in range(1, n_layers):
             nf_prev = nf
             nf = min(nf * 2, 512)
             sequence += [
@@ -628,22 +619,21 @@ class NLayerDiscriminator(nn.Module):
 
         if getIntermFeat:
             for n in range(len(sequence)):
-                setattr(self, "model" + str(n), nn.Sequential(*sequence[n]))
+                setattr(self, f"model{str(n)}", nn.Sequential(*sequence[n]))
         else:
             sequence_stream = []
-            for n in range(len(sequence)):
-                sequence_stream += sequence[n]
+            for item in sequence:
+                sequence_stream += item
             self.model = nn.Sequential(*sequence_stream)
 
     def forward(self, input):
-        if self.getIntermFeat:
-            res = [input]
-            for n in range(self.n_layers + 2):
-                model = getattr(self, "model" + str(n))
-                res.append(model(res[-1]))
-            return res[1:]
-        else:
+        if not self.getIntermFeat:
             return self.model(input)
+        res = [input]
+        for n in range(self.n_layers + 2):
+            model = getattr(self, f"model{str(n)}")
+            res.append(model(res[-1]))
+        return res[1:]
 
 
 class Vgg19(torch.nn.Module):
@@ -675,5 +665,4 @@ class Vgg19(torch.nn.Module):
         h_relu3 = self.slice3(h_relu2)
         h_relu4 = self.slice4(h_relu3)
         h_relu5 = self.slice5(h_relu4)
-        out = [h_relu1, h_relu2, h_relu3, h_relu4, h_relu5]
-        return out
+        return [h_relu1, h_relu2, h_relu3, h_relu4, h_relu5]

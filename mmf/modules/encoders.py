@@ -25,7 +25,7 @@ class ImageFeatureEncoder(nn.Module):
     def __init__(self, encoder_type, in_dim, **kwargs):
         super().__init__()
 
-        if encoder_type == "default" or encoder_type == "identity":
+        if encoder_type in ["default", "identity"]:
             self.module = Identity()
             self.module.in_dim = in_dim
             self.module.out_dim = in_dim
@@ -35,7 +35,7 @@ class ImageFeatureEncoder(nn.Module):
         elif encoder_type == "finetune_faster_rcnn_fpn_fc7":
             self.module = FinetuneFasterRcnnFpnFc7(in_dim, **kwargs)
         else:
-            raise NotImplementedError("Unknown Image Encoder: %s" % encoder_type)
+            raise NotImplementedError(f"Unknown Image Encoder: {encoder_type}")
 
         self.out_dim = self.module.out_dim
 
@@ -73,8 +73,7 @@ class FinetuneFasterRcnnFpnFc7(nn.Module):
 
     def forward(self, image):
         i2 = self.lc(image)
-        i3 = nn.functional.relu(i2)
-        return i3
+        return nn.functional.relu(i2)
 
 
 class ImageEncoder(nn.Module):
@@ -89,7 +88,7 @@ class ImageEncoder(nn.Module):
         elif self._type == "resnet152":
             self.module = ResNet152ImageEncoder(params)
         else:
-            raise NotImplementedError("Unknown Image Encoder: %s" % self._type)
+            raise NotImplementedError(f"Unknown Image Encoder: {self._type}")
 
     @property
     def out_dim(self):
@@ -184,7 +183,7 @@ class TransformerEncoder(nn.Module):
         self.module = AutoModel.from_pretrained(
             self.config.bert_model_name,
             config=self._build_encoder_config(config),
-            cache_dir=os.path.join(get_mmf_cache_dir(), "distributed_{}".format(-1)),
+            cache_dir=os.path.join(get_mmf_cache_dir(), 'distributed_-1'),
         )
         self.embeddings = self.module.embeddings
         self.original_config = self.config
@@ -192,18 +191,19 @@ class TransformerEncoder(nn.Module):
         self._init_segment_embeddings()
 
     def _init_segment_embeddings(self):
-        if self.original_config.get("num_segments", None):
+        if self.original_config.get("num_segments", None) and hasattr(
+            self.embeddings, "token_type_embeddings"
+        ):
             num_segments = self.original_config.num_segments
-            if hasattr(self.embeddings, "token_type_embeddings"):
-                new_embeds = nn.Embedding(num_segments, self.config.hidden_size)
-                new_embeds.weight.data[:2].copy_(
-                    self.embeddings.token_type_embeddings.weight
+            new_embeds = nn.Embedding(num_segments, self.config.hidden_size)
+            new_embeds.weight.data[:2].copy_(
+                self.embeddings.token_type_embeddings.weight
+            )
+            for idx in range(2, num_segments - 1):
+                new_embeds.weight.data[idx].copy_(
+                    self.embeddings.token_type_embeddings.weight.data.mean(dim=0)
                 )
-                for idx in range(2, num_segments - 1):
-                    new_embeds.weight.data[idx].copy_(
-                        self.embeddings.token_type_embeddings.weight.data.mean(dim=0)
-                    )
-                self.embeddings.token_type_embeddings = new_embeds
+            self.embeddings.token_type_embeddings = new_embeds
 
     def _build_encoder_config(self, config):
         return AutoConfig.from_pretrained(
@@ -232,9 +232,7 @@ class MultiModalEncoderBase(nn.Module):
         encoders = self._build_encoders(self.config)
         self.text_encoder, self.modal_encoder = encoders[0], encoders[1]
 
-        self._encoder_config = None
-        if self.text_encoder:
-            self._encoder_config = self.text_encoder.config
+        self._encoder_config = self.text_encoder.config if self.text_encoder else None
 
     @property
     def encoder_config(self):

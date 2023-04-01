@@ -43,8 +43,7 @@ class LogisticsCallback(Callback):
 
         if self.training_config.tensorboard:
             log_dir = setup_output_folder(folder_only=True)
-            env_tb_logdir = get_mmf_env(key="tensorboard_logdir")
-            if env_tb_logdir:
+            if env_tb_logdir := get_mmf_env(key="tensorboard_logdir"):
                 log_dir = env_tb_logdir
 
             self.tb_writer = TensorboardLogger(log_dir, self.trainer.current_iteration)
@@ -64,23 +63,21 @@ class LogisticsCallback(Callback):
         if self.training_config.experiment_name:
             extra["experiment"] = self.training_config.experiment_name
 
-        extra.update(
-            {
-                "epoch": self.trainer.current_epoch,
-                "num_updates": self.trainer.num_updates,
-                "iterations": self.trainer.current_iteration,
-                "max_updates": self.trainer.max_updates,
-                "lr": "{:.5f}".format(
-                    self.trainer.optimizer.param_groups[0]["lr"]
-                ).rstrip("0"),
-                "ups": "{:.2f}".format(
-                    self.log_interval / self.train_timer.unix_time_since_start()
-                ),
-                "time": self.train_timer.get_time_since_start(),
-                "time_since_start": self.total_timer.get_time_since_start(),
-                "eta": self._calculate_time_left(),
-            }
-        )
+        extra |= {
+            "epoch": self.trainer.current_epoch,
+            "num_updates": self.trainer.num_updates,
+            "iterations": self.trainer.current_iteration,
+            "max_updates": self.trainer.max_updates,
+            "lr": "{:.5f}".format(
+                self.trainer.optimizer.param_groups[0]["lr"]
+            ).rstrip("0"),
+            "ups": "{:.2f}".format(
+                self.log_interval / self.train_timer.unix_time_since_start()
+            ),
+            "time": self.train_timer.get_time_since_start(),
+            "time_since_start": self.total_timer.get_time_since_start(),
+            "eta": self._calculate_time_left(),
+        }
         self.train_timer.reset()
         self._summarize_report(kwargs["meter"], extra=extra)
 
@@ -95,14 +92,12 @@ class LogisticsCallback(Callback):
             "max_updates": self.trainer.max_updates,
             "val_time": self.snapshot_timer.get_time_since_start(),
         }
-        extra.update(self.trainer.early_stop_callback.early_stopping.get_info())
+        extra |= self.trainer.early_stop_callback.early_stopping.get_info()
         self.train_timer.reset()
         self._summarize_report(kwargs["meter"], extra=extra)
 
     def on_test_end(self, **kwargs):
-        prefix = "{}: full {}".format(
-            kwargs["report"].dataset_name, kwargs["report"].dataset_type
-        )
+        prefix = f'{kwargs["report"].dataset_name}: full {kwargs["report"].dataset_type}'
         self._summarize_report(kwargs["meter"], prefix)
         logger.info(f"Finished run in {self.total_timer.get_time_since_start()}")
 
@@ -122,10 +117,8 @@ class LogisticsCallback(Callback):
         if hasattr(self.trainer, "num_updates") and hasattr(
             self.trainer, "max_updates"
         ):
-            log_dict.update(
-                {"progress": f"{self.trainer.num_updates}/{self.trainer.max_updates}"}
-            )
-        log_dict.update(meter.get_log_dict())
+            log_dict["progress"] = f"{self.trainer.num_updates}/{self.trainer.max_updates}"
+        log_dict |= meter.get_log_dict()
         log_dict.update(extra)
 
         log_progress(log_dict)

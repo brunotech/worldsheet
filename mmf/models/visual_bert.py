@@ -137,11 +137,7 @@ class VisualBERTBase(BertPreTrainedModel):
             )
             sequence_output = encoded_layers[0]
             pooled_output = self.pooler(sequence_output)
-            attn_data_list = []
-
-            if self.output_attentions:
-                attn_data_list = encoded_layers[1:]
-
+            attn_data_list = encoded_layers[1:] if self.output_attentions else []
             return sequence_output, pooled_output, attn_data_list
 
 
@@ -172,9 +168,7 @@ class VisualBERTForPretraining(nn.Module):
             self.bert = VisualBERTBase.from_pretrained(
                 self.config.bert_model_name,
                 config=self.bert_config,
-                cache_dir=os.path.join(
-                    get_mmf_cache_dir(), "distributed_{}".format(-1)
-                ),
+                cache_dir=os.path.join(get_mmf_cache_dir(), 'distributed_-1'),
                 visual_embedding_dim=self.config.visual_embedding_dim,
                 embedding_strategy=self.config.embedding_strategy,
                 bypass_transformer=self.config.bypass_transformer,
@@ -194,9 +188,7 @@ class VisualBERTForPretraining(nn.Module):
         else:
             bert_masked_lm = BertForPreTraining.from_pretrained(
                 self.config.bert_model_name,
-                cache_dir=os.path.join(
-                    get_mmf_cache_dir(), "distributed_{}".format(-1)
-                ),
+                cache_dir=os.path.join(get_mmf_cache_dir(), 'distributed_-1'),
             )
         self.cls = deepcopy(bert_masked_lm.cls)
         self.loss_fct = nn.CrossEntropyLoss(ignore_index=-1)
@@ -294,9 +286,7 @@ class VisualBERTForClassification(nn.Module):
             self.bert = VisualBERTBase.from_pretrained(
                 self.config.bert_model_name,
                 config=self.bert_config,
-                cache_dir=os.path.join(
-                    get_mmf_cache_dir(), "distributed_{}".format(-1)
-                ),
+                cache_dir=os.path.join(get_mmf_cache_dir(), 'distributed_-1'),
                 visual_embedding_dim=self.config.visual_embedding_dim,
                 embedding_strategy=self.config.embedding_strategy,
                 bypass_transformer=self.config.bypass_transformer,
@@ -416,11 +406,13 @@ class VisualBERT(BaseModel):
             sample_list[key] = getattr(sample_list, key, None)
             sample_list[key] = transform_to_batch_sequence_dim(sample_list[key])
 
-        if sample_list.visual_embeddings_type is None:
-            if sample_list.image_mask is not None:
-                sample_list.visual_embeddings_type = torch.zeros_like(
-                    sample_list.image_mask
-                )
+        if (
+            sample_list.visual_embeddings_type is None
+            and sample_list.image_mask is not None
+        ):
+            sample_list.visual_embeddings_type = torch.zeros_like(
+                sample_list.image_mask
+            )
 
         if sample_list.image_mask is not None:
             attention_mask = torch.cat(
@@ -459,9 +451,7 @@ class VisualBERT(BaseModel):
         ]
         to_be_flattened_dim = ["image_text_alignment", "visual_embeddings"]
 
-        # We want to convert everything into: batch x sequence_length x (dim).
-        flattened = self.flatten(sample_list, to_be_flattened, to_be_flattened_dim)
-        return flattened
+        return self.flatten(sample_list, to_be_flattened, to_be_flattened_dim)
 
     def update_sample_list_based_on_head(self, sample_list):
         bert_input_ids = sample_list.input_ids
@@ -550,11 +540,9 @@ class VisualBERT(BaseModel):
         )
 
         if "pretraining" in self.config.training_head_type:
-            loss_key = "{}/{}".format(
-                sample_list.dataset_name, sample_list.dataset_type
-            )
+            loss_key = f"{sample_list.dataset_name}/{sample_list.dataset_type}"
             output_dict["losses"] = {}
-            output_dict["losses"][loss_key + "/masked_lm_loss"] = output_dict.pop(
+            output_dict["losses"][f"{loss_key}/masked_lm_loss"] = output_dict.pop(
                 "masked_lm_loss"
             )
 

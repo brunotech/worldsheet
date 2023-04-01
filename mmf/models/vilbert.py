@@ -544,7 +544,6 @@ class BertEncoder(nn.Module):
 
         v_start = 0
         t_start = 0
-        count = 0
         all_encoder_layers_t = []
         all_encoder_layers_v = []
 
@@ -556,7 +555,7 @@ class BertEncoder(nn.Module):
         _, num_regions, v_hidden_size = image_embedding.size()
 
         use_co_attention_mask = False
-        for v_layer_id, t_layer_id in zip(self.v_biattention_id, self.t_biattention_id):
+        for count, (v_layer_id, t_layer_id) in enumerate(zip(self.v_biattention_id, self.t_biattention_id)):
 
             v_end = v_layer_id
             t_end = t_layer_id
@@ -669,8 +668,6 @@ class BertEncoder(nn.Module):
 
             v_start = v_end
             t_start = t_end
-            count += 1
-
             if output_all_encoded_layers:
                 all_encoder_layers_t.append(txt_embedding)
                 all_encoder_layers_v.append(image_embedding)
@@ -950,7 +947,7 @@ class ViLBERTForPretraining(nn.Module):
             config=BertConfig.from_dict(
                 OmegaConf.to_container(self.config, resolve=True)
             ),
-            cache_dir=os.path.join(get_mmf_cache_dir(), "distributed_{}".format(-1)),
+            cache_dir=os.path.join(get_mmf_cache_dir(), 'distributed_-1'),
         )
         self.cls = BertPreTrainingHeads(config)
         self.vocab_size = self.config.vocab_size
@@ -1114,7 +1111,7 @@ class ViLBERTForClassification(nn.Module):
             config=BertConfig.from_dict(
                 OmegaConf.to_container(self.config, resolve=True)
             ),
-            cache_dir=os.path.join(get_mmf_cache_dir(), "distributed_{}".format(-1)),
+            cache_dir=os.path.join(get_mmf_cache_dir(), 'distributed_-1'),
         )
 
         self.training_head_type = self.config.training_head_type
@@ -1318,18 +1315,16 @@ class ViLBERT(BaseModel):
         )
 
         if self.config.training_head_type == "pretraining":
-            loss_key = "{}/{}".format(
-                sample_list.dataset_name, sample_list.dataset_type
-            )
+            loss_key = f"{sample_list.dataset_name}/{sample_list.dataset_type}"
             output_dict["losses"] = {}
-            output_dict["losses"][loss_key + "/masked_lm_loss"] = output_dict.pop(
+            output_dict["losses"][f"{loss_key}/masked_lm_loss"] = output_dict.pop(
                 "masked_lm_loss"
             )
-            output_dict["losses"][loss_key + "/masked_img_loss"] = output_dict.pop(
+            output_dict["losses"][f"{loss_key}/masked_img_loss"] = output_dict.pop(
                 "masked_img_loss"
             )
-            # if params["is_random_next"] is not None:
-            #     output_dict["losses"][loss_key + "/next_sentence_loss"]
-            #       = output_dict.pop("next_sentence_loss")
+                # if params["is_random_next"] is not None:
+                #     output_dict["losses"][loss_key + "/next_sentence_loss"]
+                #       = output_dict.pop("next_sentence_loss")
 
         return output_dict

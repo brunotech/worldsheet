@@ -24,7 +24,7 @@ class FeaturesDatabase(ImageDatabase):
         self.feature_readers = []
         self.feature_dict = {}
         self.feature_key = config.get("feature_key", "feature_path")
-        self.feature_key = feature_key if feature_key else self.feature_key
+        self.feature_key = feature_key or self.feature_key
         self._fast_read = config.get("fast_read", False)
 
         path = path.split(",")
@@ -48,7 +48,7 @@ class FeaturesDatabase(ImageDatabase):
             self._threaded_read()
 
     def _threaded_read(self):
-        elements = [idx for idx in range(1, len(self.annotation_db))]
+        elements = list(range(1, len(self.annotation_db)))
         pool = ThreadPool(processes=4)
 
         with tqdm.tqdm(total=len(elements), disable=not is_master()) as pbar:
@@ -112,14 +112,13 @@ class FeaturesDatabase(ImageDatabase):
 
         item = {}
         for idx, image_feature in enumerate(features):
-            item["image_feature_%s" % idx] = image_feature
+            item[f"image_feature_{idx}"] = image_feature
             if infos is not None:
                 # infos[idx].pop("cls_prob", None)
-                item["image_info_%s" % idx] = infos[idx]
+                item[f"image_info_{idx}"] = infos[idx]
 
         return item
 
     def _get_feature_path_based_on_image(self, item):
         image_path = self._get_attrs(item)[0]
-        feature_path = ".".join(image_path.split(".")[:-1]) + ".npy"
-        return feature_path
+        return ".".join(image_path.split(".")[:-1]) + ".npy"

@@ -389,8 +389,7 @@ class Registry:
             and no_warning is False
         ):
             cls.mapping["state"]["writer"].warning(
-                "Key {} is not present in registry, returning default value "
-                "of {}".format(original_name, default)
+                f"Key {original_name} is not present in registry, returning default value of {default}"
             )
         return value
 

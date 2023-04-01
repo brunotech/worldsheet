@@ -20,13 +20,12 @@ class TextCapsDataset(TextVQADataset):
         return sample_info
 
     def postprocess_evalai_entry(self, entry):
-        new_entry = {
+        return {
             "caption_id": entry["question_id"],
             "image_id": entry["image_id"],
             "caption": entry["answer"],
             "pred_source": entry["pred_source"],
         }
-        return new_entry
 
     def add_answer_info(self, sample_info, sample):
         sample_has_caption = "caption_str" in sample_info

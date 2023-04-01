@@ -92,15 +92,14 @@ class Metrics:
         self.metrics = self._init_metrics(metric_list)
 
     def _init_metrics(self, metric_list):
-        metrics = {}
         self.required_params = {"dataset_name", "dataset_type"}
+        metrics = {}
         for metric in metric_list:
             params = {}
             if isinstance(metric, collections.abc.Mapping):
                 if "type" not in metric:
                     raise ValueError(
-                        f"Metric {metric} needs to have 'type' attribute "
-                        + "or should be a string"
+                        f"Metric {metric} needs to have 'type' attribute or should be a string"
                     )
                 metric_type = key = metric.type
                 params = getattr(metric, "params", {})
@@ -111,17 +110,15 @@ class Metrics:
                 # One key should only be used once
                 if key in metrics:
                     raise RuntimeError(
-                        f"Metric with type/key '{metric_type}' has been defined more "
-                        + "than once in metric list."
+                        f"Metric with type/key '{metric_type}' has been defined more than once in metric list."
                     )
-            else:
-                if not isinstance(metric, str):
-                    raise TypeError(
-                        "Metric {} has inappropriate type"
-                        "'dict' or 'str' allowed".format(metric)
-                    )
+            elif isinstance(metric, str):
                 metric_type = key = metric
 
+            else:
+                raise TypeError(
+                    f"Metric {metric} has inappropriate type'dict' or 'str' allowed"
+                )
             metric_cls = registry.get_metric_class(metric_type)
             if metric_cls is None:
                 raise ValueError(
@@ -149,17 +146,15 @@ class Metrics:
                     sample_list, model_output, *args, **kwargs
                 )
 
-                if not isinstance(values[key], torch.Tensor):
-                    values[key] = torch.tensor(values[key], dtype=torch.float)
-                else:
-                    values[key] = values[key].float()
-
+                values[key] = (
+                    values[key].float()
+                    if isinstance(values[key], torch.Tensor)
+                    else torch.tensor(values[key], dtype=torch.float)
+                )
                 if values[key].dim() == 0:
                     values[key] = values[key].view(1)
 
-        registry.register(
-            "{}.{}.{}".format("metrics", sample_list.dataset_name, dataset_type), values
-        )
+        registry.register(f"metrics.{sample_list.dataset_name}.{dataset_type}", values)
 
         return values
 
@@ -208,8 +203,7 @@ class BaseMetric:
         return self.calculate(*args, **kwargs)
 
     def _calculate_with_checks(self, *args, **kwargs):
-        value = self.calculate(*args, **kwargs)
-        return value
+        return self.calculate(*args, **kwargs)
 
 
 @registry.register_metric("accuracy")
@@ -255,8 +249,7 @@ class Accuracy(BaseMetric):
         correct = (expected == output.squeeze()).sum().float()
         total = len(expected)
 
-        value = correct / total
-        return value
+        return correct / total
 
 
 @registry.register_metric("caption_bleu4")
@@ -288,8 +281,6 @@ class CaptionBleu4Metric(BaseMetric):
         """
         # Create reference and hypotheses captions.
         references = []
-        hypotheses = []
-
         # References
         targets = sample_list.answers
         for j, _ in enumerate(targets):
@@ -308,8 +299,7 @@ class CaptionBleu4Metric(BaseMetric):
         for j, _ in enumerate(scores):
             caption = self.caption_processor(scores[j])["tokens"]
             predictions.append(caption)
-        hypotheses.extend(predictions)
-
+        hypotheses = list(predictions)
         assert len(references) == len(hypotheses)
 
         bleu4 = self._bleu_score.corpus_bleu(references, hypotheses)
@@ -334,8 +324,7 @@ class VQAAccuracy(BaseMetric):
         x1 = torch.nn.functional.softmax(x, dim=dim)
         x1[:, mask_idx] = 0
         x1_sum = torch.sum(x1, dim=1, keepdim=True)
-        y = x1 / x1_sum
-        return y
+        return x1 / x1_sum
 
     def calculate(self, sample_list, model_output, *args, **kwargs):
         """Calculate vqa accuracy and return it back.
@@ -361,9 +350,7 @@ class VQAAccuracy(BaseMetric):
         one_hots = expected.new_zeros(*expected.size())
         one_hots.scatter_(1, output.view(-1, 1), 1)
         scores = one_hots * expected
-        accuracy = torch.sum(scores) / expected.size(0)
-
-        return accuracy
+        return torch.sum(scores) / expected.size(0)
 
 
 @registry.register_metric("vqa_evalai_accuracy")
@@ -387,8 +374,7 @@ class VQAEvalAIAccuracy(BaseMetric):
         x1 = torch.nn.functional.softmax(x, dim=dim)
         x1[:, mask_idx] = 0
         x1_sum = torch.sum(x1, dim=1, keepdim=True)
-        y = x1 / x1_sum
-        return y
+        return x1 / x1_sum
 
     def calculate(self, sample_list, model_output, *args, **kwargs):
         """Calculate vqa accuracy and return it back.
@@ -405,7 +391,7 @@ class VQAEvalAIAccuracy(BaseMetric):
         output = model_output["scores"]
         expected = sample_list["answers"]
 
-        answer_processor = registry.get(sample_list.dataset_name + "_answer_processor")
+        answer_processor = registry.get(f"{sample_list.dataset_name}_answer_processor")
         answer_space_size = answer_processor.get_true_vocab_size()
 
         output = self._masked_unk_softmax(output, 1, 0)
@@ -475,8 +461,7 @@ class RecallAtK(BaseMetric):
 
     def calculate(self, sample_list, model_output, k, *args, **kwargs):
         ranks = self.get_ranks(sample_list, model_output)
-        recall = float(torch.sum(torch.le(ranks, k))) / ranks.size(0)
-        return recall
+        return float(torch.sum(torch.le(ranks, k))) / ranks.size(0)
 
 
 @registry.register_metric("r@1")
@@ -626,7 +611,7 @@ class TextVQAAccuracy(BaseMetric):
         self.gt_key = "answers"
 
     def calculate(self, sample_list, model_output, *args, **kwargs):
-        answer_processor = registry.get(sample_list.dataset_name + "_answer_processor")
+        answer_processor = registry.get(f"{sample_list.dataset_name}_answer_processor")
 
         batch_size = sample_list.context_tokens.size(0)
         pred_answers = model_output["scores"].argmax(dim=-1)
@@ -645,9 +630,9 @@ class TextVQAAccuracy(BaseMetric):
                 if answer_id >= answer_space_size:
                     answer_id -= answer_space_size
                     answer_words.append(word_tokenize(tokens[answer_id]))
+                elif answer_id == answer_processor.EOS_IDX:
+                    break
                 else:
-                    if answer_id == answer_processor.EOS_IDX:
-                        break
                     answer_words.append(
                         answer_processor.answer_vocab.idx2word(answer_id)
                     )

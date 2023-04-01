@@ -23,17 +23,12 @@ class TextVQADataset(MMFDataset):
         # during dataset refactor to support variable dataset classes
         if "stvqa" in path:
             feature_path = sample_info["feature_path"]
-            append = "train"
-
-            if self.dataset_type == "test":
-                append = "test_task3"
-
+            append = "test_task3" if self.dataset_type == "test" else "train"
             if not feature_path.startswith(append):
-                feature_path = append + "/" + feature_path
+                feature_path = f"{append}/{feature_path}"
 
             sample_info["feature_path"] = feature_path
             return sample_info
-        # COCO Annotation DBs have corrext feature_path
         elif "COCO" not in sample_info["feature_path"]:
             sample_info["feature_path"] = sample_info["image_path"].replace(
                 ".jpg", ".npy"
@@ -217,9 +212,10 @@ class TextVQADataset(MMFDataset):
     def add_answer_info(self, sample_info, sample):
         # Load real answers from sample_info
         answers = sample_info.get("answers", [])
-        answer_processor_arg = {"answers": answers}
-
-        answer_processor_arg["tokens"] = sample.pop("ocr_tokens", [])
+        answer_processor_arg = {
+            "answers": answers,
+            "tokens": sample.pop("ocr_tokens", []),
+        }
 
         processed_answers = self.answer_processor(answer_processor_arg)
 

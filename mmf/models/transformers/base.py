@@ -130,7 +130,7 @@ class BaseTransformer(BaseModel):
         self.transformer = AutoModel.from_pretrained(
             self.config.transformer_base,
             config=self.transformer_config,
-            cache_dir=os.path.join(get_mmf_cache_dir(), "distributed_{}".format(-1)),
+            cache_dir=os.path.join(get_mmf_cache_dir(), 'distributed_-1'),
         )
 
     def build_heads(self):
@@ -182,10 +182,12 @@ class BaseTransformer(BaseModel):
         return
 
     def init_weights(self):
-        if self.config.random_initialize is False:
-            if self.config.transformer_base is None:
-                # No pretrained model, init weights
-                self.apply(self._init_weights)
+        if (
+            self.config.random_initialize is False
+            and self.config.transformer_base is None
+        ):
+            # No pretrained model, init weights
+            self.apply(self._init_weights)
 
         # Tie weights if required
         self.tie_weights()

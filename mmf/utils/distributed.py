@@ -41,9 +41,7 @@ def get_rank():
         return 0
     if not dist.is_nccl_available():
         return 0
-    if not dist.is_initialized():
-        return 0
-    return dist.get_rank()
+    return dist.get_rank() if dist.is_initialized() else 0
 
 
 def is_master():
@@ -59,9 +57,7 @@ def get_world_size():
         return 1
     if not dist.is_nccl_available():
         return 1
-    if not dist.is_initialized():
-        return 1
-    return dist.get_world_size()
+    return dist.get_world_size() if dist.is_initialized() else 1
 
 
 def broadcast_tensor(tensor, src=0):
@@ -104,11 +100,7 @@ def gather_tensor(tensor):
         return tensor
 
     with torch.no_grad():
-        tensor_list = []
-
-        for _ in range(world_size):
-            tensor_list.append(torch.zeros_like(tensor))
-
+        tensor_list = [torch.zeros_like(tensor) for _ in range(world_size)]
         dist.all_gather(tensor_list, tensor)
         tensor_list = torch.stack(tensor_list, dim=0)
     return tensor_list
@@ -132,7 +124,7 @@ def reduce_dict(dictionary):
             # only main process gets accumulated, so only divide by
             # world_size in this case
             values /= world_size
-        reduced_dict = {k: v for k, v in zip(keys, values)}
+        reduced_dict = dict(zip(keys, values))
     return reduced_dict
 
 
@@ -152,8 +144,7 @@ def object_to_byte_tensor(obj, max_size=4094):
             f"objects too large: object size {obj_size}, max size {max_size}"
         )
 
-    byte_tensor[0] = obj_size // 256
-    byte_tensor[1] = obj_size % 256
+    byte_tensor[0], byte_tensor[1] = divmod(obj_size, 256)
     byte_tensor[2 : 2 + obj_size] = torch.ByteTensor(list(obj_enc))
     return byte_tensor
 
@@ -166,8 +157,7 @@ def byte_tensor_to_object(byte_tensor, max_size=4094):
 
     obj_size = byte_tensor[0].item() * 256 + byte_tensor[1].item()
     obj_enc = bytes(byte_tensor[2 : 2 + obj_size].tolist())
-    obj = pickle.loads(obj_enc)
-    return obj
+    return pickle.loads(obj_enc)
 
 
 def infer_init_method(config):
@@ -183,7 +173,6 @@ def infer_init_method(config):
         config.distributed.rank = int(os.environ["RANK"])
         config.distributed.no_spawn = True
 
-    # we can determine the init method automatically for Slurm
     elif config.distributed.port > 0:
         node_list = os.environ.get("SLURM_STEP_NODELIST")
         if node_list is None:
@@ -205,7 +194,7 @@ def infer_init_method(config):
                     ntasks = int(os.environ.get("SLURM_NTASKS"))
                     nnodes = int(os.environ.get("SLURM_NNODES"))
                     assert ntasks % nnodes == 0
-                    ntasks_per_node = int(ntasks / nnodes)
+                    ntasks_per_node = ntasks // nnodes
                 if ntasks_per_node == 1:
                     assert config.distributed.world_size % nnodes == 0
                     gpus_per_node = config.distributed.world_size // nnodes

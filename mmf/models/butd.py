@@ -27,7 +27,7 @@ class BUTD(Pythia):
         self._init_extras()
 
     def _build_word_embedding(self):
-        self.text_processor = registry.get(self._datasets[0] + "_text_processor")
+        self.text_processor = registry.get(f"{self._datasets[0]}_text_processor")
         self.vocab = self.text_processor.vocab
         self.vocab_size = self.vocab.get_size()
         self.word_embedding = self.vocab.get_embedding(
@@ -95,7 +95,7 @@ class BUTD(Pythia):
     def get_data_t(self, t, data, batch_size_t, prev_output):
         if self.teacher_forcing:
             # Modify batch_size for timestep t
-            batch_size_t = sum([l > t for l in data["decode_lengths"]])
+            batch_size_t = sum(l > t for l in data["decode_lengths"])
         elif prev_output is not None and self.config.inference.type == "greedy":
             # Adding t-1 output words to data["text"] for greedy decoding
             output_softmax = torch.log_softmax(prev_output, dim=1)
@@ -170,11 +170,9 @@ class BUTD(Pythia):
             )
             model_output["captions"] = results
             model_output["losses"] = {}
-            loss_key = "{}/{}".format(
-                sample_list.dataset_name, sample_list.dataset_type
-            )
+            loss_key = f"{sample_list.dataset_name}/{sample_list.dataset_type}"
             # Add a dummy loss so that loss calculation is not required
-            model_output["losses"][loss_key + "/dummy_loss"] = torch.zeros(
+            model_output["losses"][f"{loss_key}/dummy_loss"] = torch.zeros(
                 batch_size, device=sample_list.answers.device
             )
         else:

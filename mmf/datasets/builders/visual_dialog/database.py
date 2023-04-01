@@ -36,14 +36,10 @@ class VisualDialogDatabase(torch.utils.data.Dataset):
         return self._qa_length
 
     def __getitem__(self, idx):
-        data = {}
-
         dialog_id = idx / self._multiplier
         round_id = idx % self._multiplier
         dialog = self._dialogs[dialog_id]
-        data["id"] = idx
-        data["dialog_id"] = dialog_id
-        data["round_id"] = round_id
+        data = {"id": idx, "dialog_id": dialog_id, "round_id": round_id}
         round = dialog["dialog"][round_id]
         data["question"] = self._questions[round["question"]]
         # data["answers"] = [self.]

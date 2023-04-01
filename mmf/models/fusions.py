@@ -68,10 +68,11 @@ class ConcatBERT(BaseModel):
 
     def build(self):
         self.base = FusionBase(self.config)
-        num_features = self.config.num_features
-        if not self._is_direct_features_input:
-            num_features = self.config.modal_encoder.params.num_output_features
-
+        num_features = (
+            self.config.num_features
+            if self._is_direct_features_input
+            else self.config.modal_encoder.params.num_output_features
+        )
         # As the in_dim is dynamically calculated we need to copy classifier_config
         classifier_config = deepcopy(self.config.classifier)
         classifier_config.params.in_dim = num_features * self.config.modal_hidden_size
@@ -110,9 +111,7 @@ class ConcatBERT(BaseModel):
 
         text_embedding, modal_embedding = self.base(text, modal, [mask, segment])
         embedding = torch.cat([text_embedding, modal_embedding], dim=-1)
-        output = {}
-        output["scores"] = self.classifier(embedding)
-        return output
+        return {"scores": self.classifier(embedding)}
 
 
 @registry.register_model("concat_bow")
@@ -127,10 +126,11 @@ class ConcatBoW(BaseModel):
 
     def build(self):
         self.base = FusionBase(self.config)
-        num_features = self.config.num_features
-        if not self._is_direct_features_input:
-            num_features = self.config.modal_encoder.params.num_output_features
-
+        num_features = (
+            self.config.num_features
+            if self._is_direct_features_input
+            else self.config.modal_encoder.params.num_output_features
+        )
         # As the in_dim is dynamically calculated we need to copy classifier_config
         classifier_config = deepcopy(self.config.classifier)
         classifier_config.params.in_dim = num_features * self.config.modal_hidden_size
@@ -146,9 +146,7 @@ class ConcatBoW(BaseModel):
 
         text_embedding, modal_embedding = self.base(text, modal)
         embedding = torch.cat([text_embedding, modal_embedding], dim=-1)
-        output = {}
-        output["scores"] = self.classifier(embedding)
-        return output
+        return {"scores": self.classifier(embedding)}
 
 
 @registry.register_model("late_fusion")
@@ -163,10 +161,11 @@ class LateFusion(BaseModel):
 
     def build(self):
         self.base = FusionBase(self.config)
-        num_features = self.config.num_features
-        if not self._is_direct_features_input:
-            num_features = self.config.modal_encoder.params.num_output_features
-
+        num_features = (
+            self.config.num_features
+            if self._is_direct_features_input
+            else self.config.modal_encoder.params.num_output_features
+        )
         # As the in_dim is dynamically calculated we need to copy classifier_config
         modal_classifier_config = deepcopy(self.config.modal_classifier)
         modal_classifier_config.params.in_dim = (
@@ -191,6 +190,4 @@ class LateFusion(BaseModel):
         text_embedding, modal_embedding = self.base(text, modal, [mask, segment])
         text = self.text_classifier(text_embedding)
         modal = self.modal_classifier(modal_embedding)
-        output = {}
-        output["scores"] = (text + modal) / 2
-        return output
+        return {"scores": (text + modal) / 2}

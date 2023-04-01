@@ -102,12 +102,9 @@ class HatefulMemesImageDataset(MMFDataset):
         return generate_prediction(report)
 
     def visualize(self, num_samples=1, use_transforms=False, *args, **kwargs):
-        image_paths = []
         random_samples = np.random.randint(0, len(self), size=num_samples)
 
-        for idx in random_samples:
-            image_paths.append(self.annotation_db[idx]["img"])
-
+        image_paths = [self.annotation_db[idx]["img"] for idx in random_samples]
         images = self.image_db.from_path(image_paths, use_transforms=use_transforms)
         visualize_images(images["images"], *args, **kwargs)
 

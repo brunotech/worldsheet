@@ -11,7 +11,7 @@ from .perc_sim import PNet
 # The PSNR metric
 def psnr_metric(img1, img2, mask=None):
     b = img1.size(0)
-    if not (mask is None):
+    if mask is not None:
         b = img1.size(0)
         mse_err = (img1 - img2).pow(2) * mask
         mse_err = mse_err.reshape(b, -1).sum(dim=1) / (
@@ -34,9 +34,7 @@ def perceptual_sim(img1, img2, vgg16, mask=None):
     if mask is not None:
         img1 = img1 * mask
         img2 = img2 * mask
-    # the input image is in range (0, 1), normalize to range (-1, +1)
-    dist = vgg16(img1 * 2 - 1, img2 * 2 - 1)
-    return dist
+    return vgg16(img1 * 2 - 1, img2 * 2 - 1)
 
 
 class Metrics(nn.Module):
@@ -50,7 +48,7 @@ class Metrics(nn.Module):
         # metrics should not have params that are stored in a model's
         # state dict. For perceptual losses, VGG params are loaded from
         # torchvision.
-        assert len(list(self.parameters())) == 0
+        assert not list(self.parameters())
 
     def forward(self, rgb_pred, rgb_gt, vis_mask=None):
         # NHWC to NCHW

@@ -69,15 +69,15 @@ class SynSinRealEstate10KDataset(BaseDataset):
             orig_img = torch.tensor(rgb, dtype=torch.float32)
             trans_img = self.image_processor(orig_img.permute((2, 0, 1)))
             all_one_mask = torch.ones(orig_img.size(0), orig_img.size(1))
-            setattr(current_sample, 'orig_img_{}'.format(n_view), orig_img)
-            setattr(current_sample, 'trans_img_{}'.format(n_view), trans_img)
-            setattr(current_sample, 'depth_mask_{}'.format(n_view), all_one_mask)
+            setattr(current_sample, f'orig_img_{n_view}', orig_img)
+            setattr(current_sample, f'trans_img_{n_view}', trans_img)
+            setattr(current_sample, f'depth_mask_{n_view}', all_one_mask)
 
             # camera poses R and T
             R = torch.tensor(camera_R, dtype=torch.float32)
             T = torch.tensor(camera_T, dtype=torch.float32)
-            setattr(current_sample, 'R_{}'.format(n_view), R)
-            setattr(current_sample, 'T_{}'.format(n_view), T)
+            setattr(current_sample, f'R_{n_view}', R)
+            setattr(current_sample, f'T_{n_view}', T)
 
         current_sample.vis_mask = self.dummy_vis_mask
 

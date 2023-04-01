@@ -73,7 +73,7 @@ def tokenize(sentence, regex=SENTENCE_SPLIT_REGEX, keep=None, remove=None):
     sentence = sentence.lower()
 
     for token in keep:
-        sentence = sentence.replace(token, " " + token)
+        sentence = sentence.replace(token, f" {token}")
 
     for token in remove:
         sentence = sentence.replace(token, "")
@@ -135,17 +135,9 @@ class VocabDict:
         self.itos = self.word_list
         self.num_vocab = len(self.word_list)
 
-        self.UNK_INDEX = (
-            self.word2idx_dict[self.UNK_TOKEN]
-            if self.UNK_TOKEN in self.word2idx_dict
-            else None
-        )
+        self.UNK_INDEX = self.word2idx_dict.get(self.UNK_TOKEN)
 
-        self.PAD_INDEX = (
-            self.word2idx_dict[self.PAD_TOKEN]
-            if self.PAD_TOKEN in self.word2idx_dict
-            else None
-        )
+        self.PAD_INDEX = self.word2idx_dict.get(self.PAD_TOKEN)
 
     def idx2word(self, n_w):
         return self.word_list[n_w]
@@ -175,8 +167,7 @@ class VocabDict:
             )
 
     def tokenize_and_index(self, sentence):
-        inds = [self.word2idx(w) for w in tokenize(sentence)]
-        return inds
+        return [self.word2idx(w) for w in tokenize(sentence)]
 
 
 class VocabFromText(VocabDict):
@@ -206,16 +197,10 @@ class VocabFromText(VocabDict):
             tokens = tokenize(sentence, regex=regex, keep=keep, remove=remove)
             token_counter.update(tokens)
 
-        token_list = []
-        for token in token_counter:
-            if token_counter[token] >= min_count:
-                token_list.append(token)
-
-        extras = self.DEFAULT_TOKENS
-
-        if only_unk_extra:
-            extras = [self.UNK_TOKEN]
-
+        token_list = [
+            token for token in token_counter if token_counter[token] >= min_count
+        ]
+        extras = [self.UNK_TOKEN] if only_unk_extra else self.DEFAULT_TOKENS
         self.word_list = extras + token_list
         self._build()
 
@@ -253,10 +238,11 @@ class TextDecoder:
         return torch.cat([seqs[prev_word_inds], next_word_inds.unsqueeze(1)], dim=1)
 
     def find_complete_inds(self, next_word_inds):
-        incomplete_inds = []
-        for ind, next_word in enumerate(next_word_inds):
-            if next_word != self._vocab.EOS_INDEX:
-                incomplete_inds.append(ind)
+        incomplete_inds = [
+            ind
+            for ind, next_word in enumerate(next_word_inds)
+            if next_word != self._vocab.EOS_INDEX
+        ]
         complete_inds = list(set(range(len(next_word_inds))) - set(incomplete_inds))
         return complete_inds, incomplete_inds
 
@@ -345,11 +331,9 @@ class BeamSearch(TextDecoder):
 
     def get_result(self):
         if len(self._complete_seqs_scores) == 0:
-            captions = torch.FloatTensor([0] * 5).unsqueeze(0)
-        else:
-            i = self._complete_seqs_scores.index(max(self._complete_seqs_scores))
-            captions = torch.FloatTensor(self._complete_seqs[i]).unsqueeze(0)
-        return captions
+            return torch.FloatTensor([0] * 5).unsqueeze(0)
+        i = self._complete_seqs_scores.index(max(self._complete_seqs_scores))
+        return torch.FloatTensor(self._complete_seqs[i]).unsqueeze(0)
 
 
 @registry.register_decoder("nucleus_sampling")
@@ -429,8 +413,8 @@ class NucleusSampling(TextDecoder):
         return False, data, 1
 
     def get_result(self):
-        if len(self._complete_seqs) == 0:
-            captions = torch.FloatTensor([0] * 5).unsqueeze(0)
-        else:
-            captions = torch.FloatTensor(self._complete_seqs[0]).unsqueeze(0)
-        return captions
+        return (
+            torch.FloatTensor([0] * 5).unsqueeze(0)
+            if len(self._complete_seqs) == 0
+            else torch.FloatTensor(self._complete_seqs[0]).unsqueeze(0)
+        )

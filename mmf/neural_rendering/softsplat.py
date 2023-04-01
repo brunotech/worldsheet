@@ -193,9 +193,9 @@ def cupy_kernel(strFunction, objVariables):
             break
         # end
 
-        intArg = int(objMatch.group(2))
+        intArg = int(objMatch[2])
 
-        strTensor = objMatch.group(4)
+        strTensor = objMatch[4]
         intSizes = objVariables[strTensor].size()
 
         strKernel = strKernel.replace(objMatch.group(), str(intSizes[intArg]))
@@ -208,14 +208,14 @@ def cupy_kernel(strFunction, objVariables):
             break
         # end
 
-        intArgs = int(objMatch.group(2))
-        strArgs = objMatch.group(4).split(',')
+        intArgs = int(objMatch[2])
+        strArgs = objMatch[4].split(',')
 
         strTensor = strArgs[0]
         intStrides = objVariables[strTensor].stride()
         strIndex = [ '((' + strArgs[intArg + 1].replace('{', '(').replace('}', ')').strip() + ')*' + str(intStrides[intArg]) + ')' for intArg in range(intArgs) ]
 
-        strKernel = strKernel.replace(objMatch.group(0), '(' + str.join('+', strIndex) + ')')
+        strKernel = strKernel.replace(objMatch[0], '(' + str.join('+', strIndex) + ')')
     # end
 
     while True:
@@ -225,14 +225,16 @@ def cupy_kernel(strFunction, objVariables):
             break
         # end
 
-        intArgs = int(objMatch.group(2))
-        strArgs = objMatch.group(4).split(',')
+        intArgs = int(objMatch[2])
+        strArgs = objMatch[4].split(',')
 
         strTensor = strArgs[0]
         intStrides = objVariables[strTensor].stride()
         strIndex = [ '((' + strArgs[intArg + 1].replace('{', '(').replace('}', ')').strip() + ')*' + str(intStrides[intArg]) + ')' for intArg in range(intArgs) ]
 
-        strKernel = strKernel.replace(objMatch.group(0), strTensor + '[' + str.join('+', strIndex) + ']')
+        strKernel = strKernel.replace(
+            objMatch[0], f'{strTensor}[' + str.join('+', strIndex) + ']'
+        )
     # end
 
     return strKernel
@@ -263,14 +265,16 @@ class _FunctionSoftsplat(torch.autograd.Function):
 
         if input.is_cuda == True:
             n = output.nelement()
-            cupy_launch('kernel_Softsplat_updateOutput', cupy_kernel('kernel_Softsplat_updateOutput', {
-                'input': input,
-                'flow': flow,
-                'output': output
-            }))(
-                grid=tuple([ int((n + 512 - 1) / 512), 1, 1 ]),
-                block=tuple([ 512, 1, 1 ]),
-                args=[ n, input.data_ptr(), flow.data_ptr(), output.data_ptr() ]
+            cupy_launch(
+                'kernel_Softsplat_updateOutput',
+                cupy_kernel(
+                    'kernel_Softsplat_updateOutput',
+                    {'input': input, 'flow': flow, 'output': output},
+                ),
+            )(
+                grid=(int((n + 512 - 1) / 512), 1, 1),
+                block=(512, 1, 1),
+                args=[n, input.data_ptr(), flow.data_ptr(), output.data_ptr()],
             )
 
         elif input.is_cuda == False:
@@ -301,33 +305,59 @@ class _FunctionSoftsplat(torch.autograd.Function):
         if input.is_cuda == True:
             if gradInput is not None:
                 n = gradInput.nelement()
-                cupy_launch('kernel_Softsplat_updateGradInput', cupy_kernel('kernel_Softsplat_updateGradInput', {
-                    'input': input,
-                    'flow': flow,
-                    'gradOutput': gradOutput,
-                    'gradInput': gradInput,
-                    'gradFlow': gradFlow
-                }))(
-                    grid=tuple([ int((n + 512 - 1) / 512), 1, 1 ]),
-                    block=tuple([ 512, 1, 1 ]),
-                    args=[ n, input.data_ptr(), flow.data_ptr(), gradOutput.data_ptr(), gradInput.data_ptr(), None ]
+                cupy_launch(
+                    'kernel_Softsplat_updateGradInput',
+                    cupy_kernel(
+                        'kernel_Softsplat_updateGradInput',
+                        {
+                            'input': input,
+                            'flow': flow,
+                            'gradOutput': gradOutput,
+                            'gradInput': gradInput,
+                            'gradFlow': gradFlow,
+                        },
+                    ),
+                )(
+                    grid=(int((n + 512 - 1) / 512), 1, 1),
+                    block=(512, 1, 1),
+                    args=[
+                        n,
+                        input.data_ptr(),
+                        flow.data_ptr(),
+                        gradOutput.data_ptr(),
+                        gradInput.data_ptr(),
+                        None,
+                    ],
                 )
             # end
 
             if gradFlow is not None:
                 n = gradFlow.nelement()
-                cupy_launch('kernel_Softsplat_updateGradFlow', cupy_kernel('kernel_Softsplat_updateGradFlow', {
-                    'input': input,
-                    'flow': flow,
-                    'gradOutput': gradOutput,
-                    'gradInput': gradInput,
-                    'gradFlow': gradFlow
-                }))(
-                    grid=tuple([ int((n + 512 - 1) / 512), 1, 1 ]),
-                    block=tuple([ 512, 1, 1 ]),
-                    args=[ n, input.data_ptr(), flow.data_ptr(), gradOutput.data_ptr(), None, gradFlow.data_ptr() ]
+                cupy_launch(
+                    'kernel_Softsplat_updateGradFlow',
+                    cupy_kernel(
+                        'kernel_Softsplat_updateGradFlow',
+                        {
+                            'input': input,
+                            'flow': flow,
+                            'gradOutput': gradOutput,
+                            'gradInput': gradInput,
+                            'gradFlow': gradFlow,
+                        },
+                    ),
+                )(
+                    grid=(int((n + 512 - 1) / 512), 1, 1),
+                    block=(512, 1, 1),
+                    args=[
+                        n,
+                        input.data_ptr(),
+                        flow.data_ptr(),
+                        gradOutput.data_ptr(),
+                        None,
+                        gradFlow.data_ptr(),
+                    ],
                 )
-            # end
+                # end
 
         elif input.is_cuda == False:
             raise NotImplementedError()

@@ -87,9 +87,7 @@ class PathManager:
 
     @staticmethod
     def ls(path: str) -> List[str]:
-        if FVCorePathManager:
-            return FVCorePathManager.ls(path)
-        return os.listdir(path)
+        return FVCorePathManager.ls(path) if FVCorePathManager else os.listdir(path)
 
     @staticmethod
     def mkdirs(path: str) -> None:

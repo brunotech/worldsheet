@@ -313,7 +313,7 @@ class MeshRasterizerWithZClamp(MeshRasterizer):
             raise ValueError(msg)
 
         n_cameras = len(cameras)
-        if n_cameras != 1 and n_cameras != len(meshes_world):
+        if n_cameras not in [1, len(meshes_world)]:
             msg = "Wrong number (%r) of cameras for %r meshes"
             raise ValueError(msg % (n_cameras, len(meshes_world)))
 
@@ -326,5 +326,4 @@ class MeshRasterizerWithZClamp(MeshRasterizer):
             verts_view, eps=self.z_eps
         )
         verts_screen[..., 2] = verts_view[..., 2]
-        meshes_screen = meshes_world.update_padded(new_verts_padded=verts_screen)
-        return meshes_screen
+        return meshes_world.update_padded(new_verts_padded=verts_screen)

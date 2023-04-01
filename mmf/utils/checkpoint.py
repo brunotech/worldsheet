@@ -42,11 +42,9 @@ def load_pretrained_model(model_name_or_path, *args, **kwargs):
     # If this is a file, then load this directly else download and load
     if PathManager.exists(model_name_or_path):
         download_path = model_name_or_path
-        model_name = model_name_or_path
     else:
         download_path = download_pretrained_model(model_name_or_path, *args, **kwargs)
-        model_name = model_name_or_path
-
+    model_name = model_name_or_path
     configs = glob.glob(os.path.join(download_path, "*.yaml"))
     assert len(configs) <= 1, (
         "Multiple yaml files with the pretrained model. "
@@ -103,7 +101,7 @@ class Checkpoint:
         self.ckpt_prefix = ""
 
         if hasattr(self.trainer.model, "get_ckpt_name"):
-            self.ckpt_prefix = self.trainer.model.get_ckpt_name() + "_"
+            self.ckpt_prefix = f"{self.trainer.model.get_ckpt_name()}_"
 
         self.pth_filepath = os.path.join(
             self.ckpt_foldername, self.ckpt_prefix + self.model_name + "_final.pth"
@@ -136,7 +134,7 @@ class Checkpoint:
         ckpt_config = self.config.checkpoint
 
         suffix = "best.ckpt" if ckpt_config.resume_best else "current.ckpt"
-        reverse_suffix = "best.ckpt" if not ckpt_config.resume_best else "current.ckpt"
+        reverse_suffix = "current.ckpt" if ckpt_config.resume_best else "best.ckpt"
         ckpt_filepath = os.path.join(self.ckpt_foldername, self.ckpt_prefix + suffix)
 
         # In case of interrupts and resume, ckpt_config.resume_file would be there
@@ -168,10 +166,7 @@ class Checkpoint:
                 self._load(ckpt_filepath)
             else:
                 warnings.warn(
-                    "Tried to resume but checkpoint filepath {} "
-                    "is not present. Trying {}, otherwise skipping.".format(
-                        ckpt_filepath, reverse_suffix
-                    )
+                    f"Tried to resume but checkpoint filepath {ckpt_filepath} is not present. Trying {reverse_suffix}, otherwise skipping."
                 )
                 ckpt_filepath = ckpt_filepath.replace(suffix, reverse_suffix)
                 if PathManager.exists(ckpt_filepath):
@@ -304,7 +299,7 @@ class Checkpoint:
                         and own_attr.replace(key, "")
                         == formatted_attr.replace(value, "")
                     ):
-                        logger.info("Copying " + own_attr + " from " + attr)
+                        logger.info(f"Copying {own_attr} from {attr}")
                         own_state[own_attr].copy_(ckpt[attr])
         logger.info("Pretrained model loaded")
 
@@ -323,7 +318,7 @@ class Checkpoint:
                 # replace first module. from dataparallel with empty string
                 new_dict[new_attr.replace("module.", "", 1)] = state_dict[attr]
             elif data_parallel and not attr.startswith("module."):
-                new_dict["module." + new_attr] = state_dict[attr]
+                new_dict[f"module.{new_attr}"] = state_dict[attr]
             else:
                 new_dict[new_attr] = state_dict[attr]
         return new_dict
@@ -332,14 +327,12 @@ class Checkpoint:
         ckpt_config = self.trainer.config.checkpoint
         zoo_ckpt = load_pretrained_model(file)
 
-        # If zoo_config_override, load the model directly using `from_pretrained`
-        if ckpt_config.zoo_config_override:
-            model_cls = registry.get_model_class(self.trainer.config.model)
-            self.trainer.model = model_cls.from_pretrained(ckpt_config.resume_zoo)
-            self.trainer.config.model_config = zoo_ckpt["full_config"].model_config
-            return None, False
-        else:
+        if not ckpt_config.zoo_config_override:
             return self.upgrade_state_dict(zoo_ckpt["checkpoint"]), True
+        model_cls = registry.get_model_class(self.trainer.config.model)
+        self.trainer.model = model_cls.from_pretrained(ckpt_config.resume_zoo)
+        self.trainer.config.model_config = zoo_ckpt["full_config"].model_config
+        return None, False
 
     def _torch_load(self, file):
         # Backwards compatibility to Pythia
@@ -383,10 +376,10 @@ class Checkpoint:
 
         ckpt_filepath = os.path.join(self.models_foldername, "model_%d.ckpt" % update)
         best_ckpt_filepath = os.path.join(
-            self.ckpt_foldername, self.ckpt_prefix + "best.ckpt"
+            self.ckpt_foldername, f"{self.ckpt_prefix}best.ckpt"
         )
         current_ckpt_filepath = os.path.join(
-            self.ckpt_foldername, self.ckpt_prefix + "current.ckpt"
+            self.ckpt_foldername, f"{self.ckpt_prefix}current.ckpt"
         )
 
         best_iteration = (
@@ -423,7 +416,7 @@ class Checkpoint:
 
         if self.git_repo:
             git_metadata_dict = self._get_vcs_fields()
-            ckpt.update(git_metadata_dict)
+            ckpt |= git_metadata_dict
 
         with PathManager.open(ckpt_filepath, "wb") as f:
             torch.save(ckpt, f)
@@ -450,7 +443,7 @@ class Checkpoint:
     def restore(self):
         synchronize()
         logger.info("Restoring checkpoint")
-        best_path = os.path.join(self.ckpt_foldername, self.ckpt_prefix + "best.ckpt")
+        best_path = os.path.join(self.ckpt_foldername, f"{self.ckpt_prefix}best.ckpt")
 
         if PathManager.exists(best_path):
             self._load(best_path, force=True)

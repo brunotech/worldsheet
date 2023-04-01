@@ -40,8 +40,4 @@ class MeshRGBGenerator(nn.Module):
         # outs is in range -1 to +1 as constrained by Tanh in netG
         outs = self.netG(imgs.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
 
-        # we output in the original float-point image RGB range 0~1,
-        # to be compatible with the mesh rendering results
-        # scale the output w/ img_out_scaling on Tanh activation
-        imgs_out = outs * self.G_cfg.img_out_scaling + 0.5
-        return imgs_out
+        return outs * self.G_cfg.img_out_scaling + 0.5

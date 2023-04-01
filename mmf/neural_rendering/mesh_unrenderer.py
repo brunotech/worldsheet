@@ -20,9 +20,7 @@ class MeshUnrenderer(nn.Module):
 
     def forward(self, meshes_world, images, H_out=None, W_out=None, **kwargs) -> torch.Tensor:
         fragments = self.rasterizer(meshes_world, **kwargs)
-        textures = self.unshader(fragments, meshes_world, images, H_out, W_out, **kwargs)
-
-        return textures
+        return self.unshader(fragments, meshes_world, images, H_out, W_out, **kwargs)
 
 
 class SoftPerspectiveUnshader(nn.Module):
@@ -168,12 +166,17 @@ def meshes_unsample_textures(
 
 
 def _get_identity(H, W, device):
-    identity = torch.cat([
-        torch.linspace(0, W, W, device=device).view(1, 1, W, 1).expand(1, H, W, 1),
-        torch.linspace(0, H, H, device=device).view(1, H, 1, 1).expand(1, H, W, 1),
-    ], dim=-1)
-
-    return identity
+    return torch.cat(
+        [
+            torch.linspace(0, W, W, device=device)
+            .view(1, 1, W, 1)
+            .expand(1, H, W, 1),
+            torch.linspace(0, H, H, device=device)
+            .view(1, H, 1, 1)
+            .expand(1, H, W, 1),
+        ],
+        dim=-1,
+    )
 
 
 def grid_unsample_no_normalization(image, grid, H_out=None, W_out=None):

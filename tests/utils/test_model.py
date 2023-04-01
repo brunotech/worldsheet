@@ -51,10 +51,11 @@ class TestDecoderModel(nn.Module):
         )
         sample_list = decoder.init_batch(sample_list)
         batch_size = sample_list.image_feature_0.size(0)
-        data = {}
-        data["texts"] = sample_list.answers.new_full(
-            (batch_size, 1), self.vocab.SOS_INDEX, dtype=torch.long
-        )
+        data = {
+            "texts": sample_list.answers.new_full(
+                (batch_size, 1), self.vocab.SOS_INDEX, dtype=torch.long
+            )
+        }
         timesteps = 10
         sample_list.add_field("targets", sample_list.answers[:, 0, 1:])
         output = None
@@ -69,7 +70,4 @@ class TestDecoderModel(nn.Module):
             if finish:
                 break
 
-        model_output = {"scores": scores}
-        model_output["captions"] = decoder.get_result()
-
-        return model_output
+        return {"scores": scores, "captions": decoder.get_result()}

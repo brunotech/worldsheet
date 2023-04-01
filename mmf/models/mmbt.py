@@ -312,10 +312,7 @@ class MMBTModel(nn.Module):
         sequence_output = encoder_outputs[0]
         pooled_output = self.transformer.pooler(sequence_output)
 
-        outputs = (sequence_output, pooled_output) + encoder_outputs[
-            1:
-        ]  # add hidden_states and attentions if they are here
-        return outputs  # sequence_output, pooled_output, (hidden_states), (attentions)
+        return (sequence_output, pooled_output) + encoder_outputs[1:]
 
     def get_input_embeddings(self):
         return self.embeddings.word_embeddings
@@ -383,9 +380,7 @@ class MMBTBase(MultiModalEncoderBase):
                 device=input_modal.device,
             )
 
-        # See details of inputs at
-        # https://github.com/huggingface/transformers/blob/1789c7/src/transformers/modeling_mmbt.py#L101 # noqa
-        output = self.mmbt(
+        return self.mmbt(
             input_modal,
             input_ids=sample_list.input_ids,
             modal_start_tokens=modal_start_token,
@@ -401,8 +396,6 @@ class MMBTBase(MultiModalEncoderBase):
             encoder_attention_mask=None,
         )
 
-        return output
-
 
 class MMBTForPreTraining(nn.Module):
     def __init__(self, config, *args, **kwargs):
@@ -416,7 +409,7 @@ class MMBTForPreTraining(nn.Module):
         pretraining_module = BertForPreTraining.from_pretrained(
             self.config.bert_model_name,
             config=self.encoder_config,
-            cache_dir=os.path.join(get_mmf_cache_dir(), "distributed_{}".format(-1)),
+            cache_dir=os.path.join(get_mmf_cache_dir(), 'distributed_-1'),
         )
 
         self.cls = deepcopy(pretraining_module.cls)

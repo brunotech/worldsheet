@@ -332,7 +332,7 @@ def has_failed(save_dir):
     for fn in os.listdir(save_dir):
         if fn.startswith("train.stderr."):
             job_ids.append(int(fn.split(".")[-1]))
-    if len(job_ids) == 0:
+    if not job_ids:
         return False
     max_job_id = max(job_ids)
 
@@ -349,9 +349,7 @@ def has_failed(save_dir):
 
 def has_started(save_dir):
     train_log = os.path.join(save_dir, "train.log")
-    if not os.path.exists(train_log):
-        return False
-    return True
+    return bool(os.path.exists(train_log))
 
 
 def get_random_port():

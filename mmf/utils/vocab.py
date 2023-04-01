@@ -57,7 +57,7 @@ class Vocab:
             if params["name"] == "fasttext":
                 self.vocab = ModelVocab(*args, **params)
         else:
-            raise ValueError("Unknown vocab type: %s" % vocab_type)
+            raise ValueError(f"Unknown vocab type: {vocab_type}")
 
         self._dir_representation = dir(self)
 
@@ -70,10 +70,7 @@ class Vocab:
         elif "vocab" in self.__dict__ and hasattr(self.vocab, name):
             return getattr(self.vocab, name)
         else:
-            type_vocab = "Vocab"
-            if "vocab" in self.__dict__:
-                type_vocab = type(self.vocab)
-
+            type_vocab = type(self.vocab) if "vocab" in self.__dict__ else "Vocab"
             raise AttributeError(f"{type_vocab} vocab type has no attribute {name}.")
 
 
@@ -107,21 +104,19 @@ class BaseVocab:
 
         """
         self.type = "base"
-        self.word_dict = {}
-        self.itos = {}
+        self.itos = {
+            self.PAD_INDEX: self.PAD_TOKEN,
+            self.SOS_INDEX: self.SOS_TOKEN,
+            self.EOS_INDEX: self.EOS_TOKEN,
+            self.UNK_INDEX: self.UNK_TOKEN,
+        }
 
-        self.itos[self.PAD_INDEX] = self.PAD_TOKEN
-        self.itos[self.SOS_INDEX] = self.SOS_TOKEN
-        self.itos[self.EOS_INDEX] = self.EOS_TOKEN
-        self.itos[self.UNK_INDEX] = self.UNK_TOKEN
-
-        self.word_dict[self.SOS_TOKEN] = self.SOS_INDEX
-        self.word_dict[self.EOS_TOKEN] = self.EOS_INDEX
-        self.word_dict[self.PAD_TOKEN] = self.PAD_INDEX
-        self.word_dict[self.UNK_TOKEN] = self.UNK_INDEX
-
-        index = len(self.itos.keys())
-
+        self.word_dict = {
+            self.SOS_TOKEN: self.SOS_INDEX,
+            self.EOS_TOKEN: self.EOS_INDEX,
+            self.PAD_TOKEN: self.PAD_INDEX,
+            self.UNK_TOKEN: self.UNK_INDEX,
+        }
         self.total_predefined = len(self.itos.keys())
 
         if vocab_file is not None:
@@ -130,7 +125,9 @@ class BaseVocab:
                 vocab_file = get_absolute_path(vocab_file)
 
             if not PathManager.exists(vocab_file):
-                raise RuntimeError("Vocab not found at " + vocab_file)
+                raise RuntimeError(f"Vocab not found at {vocab_file}")
+
+            index = len(self.itos.keys())
 
             with PathManager.open(vocab_file, "r") as f:
                 for line in f:
@@ -142,10 +139,7 @@ class BaseVocab:
         self.word_dict[self.EOS_TOKEN] = self.EOS_INDEX
         self.word_dict[self.PAD_TOKEN] = self.PAD_INDEX
         self.word_dict[self.UNK_TOKEN] = self.UNK_INDEX
-        # Return unk index by default
-        self.stoi = defaultdict(self.get_unk_index)
-        self.stoi.update(self.word_dict)
-
+        self.stoi = defaultdict(self.get_unk_index) | self.word_dict
         self.vectors = torch.FloatTensor(self.get_size(), embedding_dim)
 
     def get_itos(self):
@@ -248,7 +242,7 @@ class CustomVocab(BaseVocab):
 
         self.vectors = torch.FloatTensor(self.get_size(), len(embedding_vectors[0]))
 
-        for i in range(0, 4):
+        for i in range(4):
             self.vectors[i] = torch.ones_like(self.vectors[i]) * 0.1 * i
 
         for i in range(4, self.get_size()):
@@ -310,7 +304,7 @@ class IntersectedVocab(BaseVocab):
 
         self.embedding_dim = len(embedding.vectors[0])
 
-        for i in range(0, 4):
+        for i in range(4):
             self.vectors[i] = torch.ones_like(self.vectors[i]) * 0.1 * i
 
         for i in range(4, self.get_size()):
@@ -354,12 +348,12 @@ class PretrainedVocab(BaseVocab):
 
         self.UNK_INDEX = 3
         self.stoi = defaultdict(lambda: self.UNK_INDEX)
-        self.itos = {}
-
-        self.itos[self.PAD_INDEX] = self.PAD_TOKEN
-        self.itos[self.SOS_INDEX] = self.SOS_TOKEN
-        self.itos[self.EOS_INDEX] = self.EOS_TOKEN
-        self.itos[self.UNK_INDEX] = self.UNK_TOKEN
+        self.itos = {
+            self.PAD_INDEX: self.PAD_TOKEN,
+            self.SOS_INDEX: self.SOS_TOKEN,
+            self.EOS_INDEX: self.EOS_TOKEN,
+            self.UNK_INDEX: self.UNK_TOKEN,
+        }
 
         self.stoi[self.SOS_TOKEN] = self.SOS_INDEX
         self.stoi[self.EOS_TOKEN] = self.EOS_INDEX
@@ -373,13 +367,11 @@ class PretrainedVocab(BaseVocab):
         for i in range(4):
             self.vectors[i] = torch.ones_like(self.vectors[i]) * 0.1 * i
 
-        index = 4
-        for word in embedding.stoi:
+        for index, word in enumerate(embedding.stoi, start=4):
             self.itos[index] = word
             self.stoi[word] = index
             actual_index = embedding.stoi[word]
             self.vectors[index] = embedding.vectors[actual_index]
-            index += 1
 
 
 class WordToVectorDict:

@@ -55,8 +55,7 @@ class MeshGANLosses(nn.Module):
     def compute_generator_loss(self, fake_img, real_img, alpha_mask):
         pred_fake, pred_real = self._discriminate(fake_img, real_img, alpha_mask)
 
-        g_losses = {}
-        g_losses["gan"] = self.criterionGAN(pred_fake, True, for_discriminator=False)
+        g_losses = {"gan": self.criterionGAN(pred_fake, True, for_discriminator=False)}
         if not self.D_cfg.no_ganFeat_loss:
             feat_weights = 4.0 / (self.D_cfg.n_layers + 1)
             D_weights = 1.0 / self.D_cfg.num_D
@@ -77,11 +76,10 @@ class MeshGANLosses(nn.Module):
             fake_img.detach(), real_img.detach(), alpha_mask.detach()
         )
 
-        d_losses = {
+        return {
             "d_fake": self.criterionGAN(pred_fake, False, for_discriminator=True),
             "d_real": self.criterionGAN(pred_real, True, for_discriminator=True),
         }
-        return d_losses
 
     def forward(self, fake_img, real_img, alpha_mask, update_discriminator):
         # self._debug_print_param()
@@ -164,6 +162,4 @@ class MeshRGBDiscriminator(nn.Module):
         if self.use_alpha_input:
             imgs = torch.cat([imgs, alpha_mask], dim=-1)
 
-        result = self.netD(imgs.permute(0, 3, 1, 2))
-
-        return result
+        return self.netD(imgs.permute(0, 3, 1, 2))

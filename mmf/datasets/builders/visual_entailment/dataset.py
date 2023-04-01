@@ -40,7 +40,7 @@ class VisualEntailmentDataset(VQA2Dataset):
             # Remove sentence id from end
             identifier = sample_info["Flikr30kID"].split(".")[0]
             # Load img0 and img1 features
-            sample_info["feature_path"] = "{}.npy".format(identifier)
+            sample_info["feature_path"] = f"{identifier}.npy"
             features = self.features_db[idx]
             if hasattr(self, "transformer_bbox_processor"):
                 features["image_info_0"] = self.transformer_bbox_processor(

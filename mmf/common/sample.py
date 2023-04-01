@@ -127,8 +127,7 @@ class SampleList(OrderedDict):
                     and sample[field].size(0) != samples[0][field].size(0)
                 ):
                     raise AssertionError(
-                        "Fields for all samples must be equally sized. "
-                        "{} is of different sizes".format(field)
+                        f"Fields for all samples must be equally sized. {field} is of different sizes"
                     )
 
                 self[field][idx] = self._get_data_copy(sample[field])
@@ -154,9 +153,7 @@ class SampleList(OrderedDict):
 
     def _fix_sample_type(self, samples):
         if not isinstance(samples[0], Sample):
-            proper_samples = []
-            for sample in samples:
-                proper_samples.append(Sample(sample))
+            proper_samples = [Sample(sample) for sample in samples]
             samples = proper_samples
         return samples
 
@@ -166,8 +163,7 @@ class SampleList(OrderedDict):
     def __getattr__(self, key):
         if key not in self:
             raise AttributeError(
-                "Key {} not found in the SampleList. "
-                "Valid choices are {}".format(key, self.fields())
+                f"Key {key} not found in the SampleList. Valid choices are {self.fields()}"
             )
         fields = self.keys()
 
@@ -245,8 +241,7 @@ class SampleList(OrderedDict):
         for field in fields:
             if field not in current_fields:
                 raise AttributeError(
-                    "{} not present in SampleList. "
-                    "Valid choices are {}".format(field, current_fields)
+                    f"{field} not present in SampleList. Valid choices are {current_fields}"
                 )
             return_list.add_field(field, self[field])
 
@@ -305,12 +300,7 @@ class SampleList(OrderedDict):
             and data.size(0) != self[tensor_field].size(0)
         ):
             raise AssertionError(
-                "A tensor field to be added must "
-                "have same size as existing tensor "
-                "fields in SampleList. "
-                "Passed size: {}, Required size: {}".format(
-                    len(data), len(self[tensor_field])
-                )
+                f"A tensor field to be added must have same size as existing tensor fields in SampleList. Passed size: {len(data)}, Required size: {len(self[tensor_field])}"
             )
 
         if isinstance(data, collections.abc.Mapping):
@@ -340,8 +330,7 @@ class SampleList(OrderedDict):
         if not isinstance(device, torch.device):
             if not isinstance(device, str):
                 raise TypeError(
-                    "device must be either 'str' or "
-                    "'torch.device' type, {} found".format(type(device))
+                    f"device must be either 'str' or 'torch.device' type, {type(device)} found"
                 )
             device = torch.device(device)
 

@@ -45,13 +45,13 @@ class TestBaseDataset(unittest.TestCase):
         self.assertFalse(any(hasattr(base_dataset, key) for key in expected_processors))
 
         for processor in expected_processors:
-            self.assertIsNone(registry.get("{}_{}".format("vqa2", processor)))
+            self.assertIsNone(registry.get(f"vqa2_{processor}"))
 
         # Check processors are initialized after init_processors
         base_dataset.init_processors()
         self.assertTrue(all(hasattr(base_dataset, key) for key in expected_processors))
         for processor in expected_processors:
-            self.assertIsNotNone(registry.get("{}_{}".format("vqa2", processor)))
+            self.assertIsNotNone(registry.get(f"vqa2_{processor}"))
 
     def _fix_configuration(self, configuration):
         vqa2_config = configuration.config.dataset_config.vqa2

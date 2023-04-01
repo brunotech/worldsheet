@@ -13,13 +13,9 @@ class STVQADataset(TextVQADataset):
 
     def preprocess_sample_info(self, sample_info):
         feature_path = sample_info["feature_path"]
-        append = "train"
-
-        if self.dataset_type == "test":
-            append = "test_task3"
-
+        append = "test_task3" if self.dataset_type == "test" else "train"
         if not feature_path.startswith(append):
-            feature_path = append + "/" + feature_path
+            feature_path = f"{append}/{feature_path}"
 
         sample_info["feature_path"] = feature_path
         return sample_info

@@ -32,7 +32,7 @@ class NLVR2Dataset(VQA2Dataset):
             # Remove sentence id from end
             identifier = "-".join(sample_info["identifier"].split("-")[:-1])
             # Load img0 and img1 features
-            sample_info["feature_path"] = "{}-img0.npy".format(identifier)
+            sample_info["feature_path"] = f"{identifier}-img0.npy"
             features = self.features_db[idx]
             if hasattr(self, "transformer_bbox_processor"):
                 features["image_info_0"] = self.transformer_bbox_processor(
@@ -41,7 +41,7 @@ class NLVR2Dataset(VQA2Dataset):
             current_sample.img0 = Sample()
             current_sample.img0.update(features)
 
-            sample_info["feature_path"] = "{}-img1.npy".format(identifier)
+            sample_info["feature_path"] = f"{identifier}-img1.npy"
             features = self.features_db[idx]
             if hasattr(self, "transformer_bbox_processor"):
                 features["image_info_0"] = self.transformer_bbox_processor(

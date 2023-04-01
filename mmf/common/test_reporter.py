@@ -41,9 +41,7 @@ class TestReporter(Dataset):
 
         self.datasets = []
 
-        for dataset in self.test_task.get_datasets():
-            self.datasets.append(dataset)
-
+        self.datasets.extend(iter(self.test_task.get_datasets()))
         self.current_dataset_idx = -1
         self.current_dataset = self.datasets[self.current_dataset_idx]
 
@@ -67,10 +65,9 @@ class TestReporter(Dataset):
 
         if self.current_dataset_idx == len(self.datasets):
             return False
-        else:
-            self.current_dataset = self.datasets[self.current_dataset_idx]
-            logger.info(f"Predicting for {self.current_dataset.dataset_name}")
-            return True
+        self.current_dataset = self.datasets[self.current_dataset_idx]
+        logger.info(f"Predicting for {self.current_dataset.dataset_name}")
+        return True
 
     def flush_report(self):
         if not is_master():
@@ -80,19 +77,19 @@ class TestReporter(Dataset):
         time_format = "%Y-%m-%dT%H:%M:%S"
         time = self.timer.get_time_hhmmss(None, format=time_format)
 
-        filename = name + "_"
+        filename = f"{name}_"
 
         if len(self.experiment_name) > 0:
-            filename += self.experiment_name + "_"
+            filename += f"{self.experiment_name}_"
 
-        filename += self.task_type + "_"
+        filename += f"{self.task_type}_"
         filename += time
 
         if self.config.evaluation.predict_file_format == "csv":
-            filepath = os.path.join(self.report_folder, filename + ".csv")
+            filepath = os.path.join(self.report_folder, f"{filename}.csv")
             self.csv_dump(filepath)
         else:
-            filepath = os.path.join(self.report_folder, filename + ".json")
+            filepath = os.path.join(self.report_folder, f"{filename}.json")
             self.json_dump(filepath)
 
         logger.info(
